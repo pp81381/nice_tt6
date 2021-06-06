@@ -16,6 +16,52 @@ def step_num_to_percent_pos(step_num, max_steps):
     return (max_steps - step_num) / max_steps
 
 
+class MoverManager:
+    """
+    Helper class to manage cover movement
+
+    The cover can only be moving to one position at a time.
+    If a second request is made while the Cover is already moving then the
+    current mover_coro is stopped by sending it a stop event and then the
+    new mover_coro is initiated.
+    The holder of current_mover_lock is the current mover and is supposed to
+    periodically wait on stop_event (see self._sleep)
+    The holder of next_mover_lock is the next mover and this routine will send a
+    stop event to the current mover on its behalf
+    The next_mover_lock is released as soon as the next mover aquires the
+    current_mover_lock and becomes the current mover
+
+    Note that the __init__ method creates asyncio objects that require the
+    event loop to be running - you can get obscure errors in non-asyncio
+    unittests if you construct an object of this type in them
+    """
+
+    def __init__(self):
+        self.next_mover_lock = asyncio.Lock()
+        self.current_mover_lock = asyncio.Lock()
+        self.stop_event = asyncio.Event()
+
+    async def mover_manager(self, mover_coro):
+        """Make sure that only one mover_coro is active at any time"""
+        async with AsyncExitStack() as next_mover_cm:
+            await next_mover_cm.enter_async_context(self.next_mover_lock)
+            if self.current_mover_lock.locked():
+                self.stop_event.set()
+            async with self.current_mover_lock:
+                if self.stop_event.is_set():
+                    self.stop_event.clear()
+                await next_mover_cm.aclose()
+                await mover_coro
+
+    async def sleep(self, delay):
+        """Sleep for delay unless interrupted by a stop_event.  Return False if stopped."""
+        try:
+            await asyncio.wait_for(self.stop_event.wait(), delay)
+            return False
+        except asyncio.TimeoutError:
+            return True
+
+
 class TT6CoverEmulator(AsyncObservable):
     """
     Emulate a Cover with a stepper motor that moves at a constant rate
@@ -48,9 +94,7 @@ class TT6CoverEmulator(AsyncObservable):
         self.speed = speed
         self.step_increment = 5
         self.step_num = percent_pos_to_step_num(percent_pos, self.max_steps)
-        self.next_mover_lock = asyncio.Lock()
-        self.current_mover_lock = asyncio.Lock()
-        self.stop_event = asyncio.Event()
+        self._mover_manager = None
         self.presets = {}
 
     @property
@@ -73,6 +117,11 @@ class TT6CoverEmulator(AsyncObservable):
     def percent_pos(self):
         return step_num_to_percent_pos(self.step_num, self.max_steps)
 
+    def _get_mover_manager(self) -> MoverManager:
+        if self._mover_manager is None:
+            self._mover_manager = MoverManager()
+        return self._mover_manager
+
     def log_position(self, message):
         _LOGGER.info(
             f"Pos for {self.name}: {self.percent_pos:%}, step_num {self.step_num} ({message})"
@@ -81,7 +130,7 @@ class TT6CoverEmulator(AsyncObservable):
     async def _move_increment(self, num_steps, notify):
         """Move an increment of num_steps.  Return False if stop event received."""
         delay = abs(self.step_len / self.speed * num_steps)
-        if await self._sleep(delay):
+        if await self._get_mover_manager().sleep(delay):
             self.step_num += num_steps
             self.log_position(f"moved {num_steps} steps")
             if notify:
@@ -93,14 +142,6 @@ class TT6CoverEmulator(AsyncObservable):
             if notify:
                 await self.notify_observers()
             return False
-
-    async def _sleep(self, delay):
-        """Sleep for delay unless interrupted by a stop_event.  Return False if stopped."""
-        try:
-            await asyncio.wait_for(self.stop_event.wait(), delay)
-            return False
-        except asyncio.TimeoutError:
-            return True
 
     async def _move_to_step_num(self, to_step_num, notify):
         if to_step_num < 0 or to_step_num > self.max_steps:
@@ -128,31 +169,11 @@ class TT6CoverEmulator(AsyncObservable):
 
         self.log_position(f"movement complete")
 
-    async def _mover_manager(self, mover_coro):
-        """Make sure that only one mover_coro is active at any time"""
-        # The cover can only be moving to one position at a time.
-        # If a second request is made while the Cover is already moving then the
-        # current mover_coro is stopped by sending it a stop event and then the
-        # new mover_coro is initiated.
-        # The holder of current_mover_lock is the current mover and is supposed to
-        # periodically wait on stop_event (see self._sleep)
-        # The holder of next_mover_lock is the next mover and this routine will send a
-        # stop event to the current mover on its behalf
-        # The next_mover_lock is released as soon as the next mover aquires the
-        # current_mover_lock and becomes the current mover
-        async with AsyncExitStack() as next_mover_cm:
-            await next_mover_cm.enter_async_context(self.next_mover_lock)
-            if self.current_mover_lock.locked():
-                self.stop_event.set()
-            async with self.current_mover_lock:
-                if self.stop_event.is_set():
-                    self.stop_event.clear()
-                await next_mover_cm.aclose()
-                await mover_coro
-
     async def move_to_step_num(self, to_step_num):
         """Move the Cover to a specific step number"""
-        await self._mover_manager(self._move_to_step_num(to_step_num, True))
+        await self._get_mover_manager().mover_manager(
+            self._move_to_step_num(to_step_num, True)
+        )
 
     async def _move_num_steps(self, requested_steps, notify):
         """Move a relative number of steps."""
@@ -172,12 +193,14 @@ class TT6CoverEmulator(AsyncObservable):
             self.log_position(
                 f"relative movement of {num_steps} steps initiated to step {to_step_num}"
             )
-            await self._mover_manager(self._move_to_step_num(to_step_num, notify))
+            await self._get_mover_manager().mover_manager(
+                self._move_to_step_num(to_step_num, notify)
+            )
 
     async def stop(self):
         """Stop any movement in progress"""
         self.log_position("stop movement requested")
-        await self._mover_manager(asyncio.sleep(0))
+        await self._get_mover_manager().mover_manager(asyncio.sleep(0))
 
     async def move_up(self):
         """Move to upper limit"""

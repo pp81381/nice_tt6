@@ -6,7 +6,7 @@ from unittest import IsolatedAsyncioTestCase
 class TestCoverMovement(IsolatedAsyncioTestCase):
     """Test Cover movement"""
 
-    async def asyncSetUp(self):
+    def setUp(self):
         self.cover = TT6CoverEmulator("screen", None, 0.01, 1.77, 0.08, 1.0)
 
     async def test_step_movements(self):
