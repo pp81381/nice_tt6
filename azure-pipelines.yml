@@ -24,17 +24,8 @@ jobs:
   - script: pip install tox
     displayName: 'Install tox'
 
-  - script: mkdir junit
-    displayName: 'Make target folder for test results'
-
-  - script: tox -e py --result-json=junit/test-results.xml
+  - script: tox -e py
     displayName: 'Run tox'
-
-  - task: PublishTestResults@2
-    condition: succeededOrFailed()
-    inputs:
-      testResultsFiles: '**/test-*.xml'
-      testRunTitle: 'Publish test results for Python $(python.version)'
   
 - job: 'Publish'
   dependsOn: 'Test'
