@@ -1,0 +1,57 @@
+# Python package
+# Create and test a Python package on multiple Python versions.
+# Add steps that analyze code, save the dist with the build record, publish to a PyPI-compatible index, and more:
+# https://docs.microsoft.com/azure/devops/pipelines/languages/python
+
+trigger:
+- main
+
+jobs:
+- job: 'Test'
+  pool:
+    vmImage: ubuntu-latest
+  strategy:
+    matrix:
+      Python38:
+        python.version: '3.8'
+
+  steps:
+  - task: UsePythonVersion@0
+    inputs:
+      versionSpec: '$(python.version)'
+    displayName: 'Use Python $(python.version)'
+
+  - script: pip install tox
+    displayName: 'Install tox'
+
+  - script: tox -e py
+    displayName: 'Run tox'
+  
+- job: 'Publish'
+  dependsOn: 'Test'
+  pool:
+    vmImage: ubuntu-latest
+
+  steps:
+  - task: UsePythonVersion@0
+    inputs:
+      versionSpec: '3.8'
+      architecture: 'x64'
+    displayName: 'Use Python 3.8'
+
+  - script: pip install build
+    displayName: 'Install build'
+
+  - script: python -m build
+    displayName: 'Build'
+
+  - task: CopyFiles@2
+    inputs:
+      sourceFolder: '$(Build.SourcesDirectory)'
+      contents: dist/*
+      targetFolder: '$(Build.ArtifactStagingDirectory)'
+
+  - task: PublishBuildArtifacts@1
+    inputs:
+      pathtoPublish: '$(Build.ArtifactStagingDirectory)'
+      artifactName: dist
