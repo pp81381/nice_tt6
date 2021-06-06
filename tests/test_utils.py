@@ -1,5 +1,10 @@
-from unittest import TestCase
-from nice_tt6.utils import hex_arg_to_int, pct_arg_to_int
+from unittest import TestCase, IsolatedAsyncioTestCase
+from nice_tt6.utils import (
+    get_platform_serial_port,
+    hex_arg_to_int,
+    pct_arg_to_int,
+    async_get_platform_serial_port,
+)
 
 
 class TestValidationAndConversion(TestCase):
@@ -28,3 +33,12 @@ class TestValidationAndConversion(TestCase):
             pct_arg_to_int("FFFF")
         with self.assertRaises(ValueError):
             pct_arg_to_int("01000")
+
+
+class TestGetSerial(IsolatedAsyncioTestCase):
+    def setUp(self):
+        self.serial_port = get_platform_serial_port()
+
+    async def test1(self):
+        serial_port = await async_get_platform_serial_port()
+        self.assertEqual(serial_port, self.serial_port)

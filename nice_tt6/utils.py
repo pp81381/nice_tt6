@@ -23,8 +23,15 @@ def get_system_serial_port(system):
 
 
 def get_platform_serial_port():
-    """ Work out the most likely serial port given the platform. """
+    """Work out the most likely serial port given the platform"""
     return get_system_serial_port(platform.system())
+
+
+async def async_get_platform_serial_port():
+    """Work out the most likely serial port given the platform without blocking"""
+    loop = asyncio.get_running_loop()
+    system = await loop.run_in_executor(None, platform.system)
+    return get_system_serial_port(system)
 
 
 def hex_arg_to_int(arg, fixed_len=True):

@@ -2,7 +2,7 @@ from contextlib import asynccontextmanager
 import logging
 from nice_tt6.decode import Decode
 from nice_tt6.encode import Encode
-from nice_tt6.utils import get_platform_serial_port
+from nice_tt6.utils import async_get_platform_serial_port
 from nice_tt6.multiplexer import (
     MultiplexerReader,
     MultiplexerSerialConnection,
@@ -17,7 +17,7 @@ _LOGGER = logging.getLogger(__name__)
 @asynccontextmanager
 async def open_connection(serial_port=None):
     if serial_port is None:
-        serial_port = get_platform_serial_port()
+        serial_port = await async_get_platform_serial_port()
     conn = MultiplexerSerialConnection(TT6Reader, TT6Writer, 0.05)
     try:
         await conn.open(
