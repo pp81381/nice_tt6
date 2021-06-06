@@ -28,14 +28,16 @@ jobs:
     displayName: 'Run tox'
 
 - job: 'Publish'
+  dependsOn: 'Test'
   pool:
     vmImage: ubuntu-latest
 
   steps:
   - task: UsePythonVersion@0
     inputs:
-      versionSpec: '$(python.version)'
-    displayName: 'Use Python $(python.version)'
+      versionSpec: '3.8'
+      architecture: 'x64'
+    displayName: 'Use Python 3.8'
 
   - script: pip install build
     displayName: 'Install build'
