@@ -9,7 +9,6 @@ from unittest.mock import patch, mock_open
 
 class TestConfig(TestCase):
     def setUp(self):
-        print(build_config.__module__)
         self.filename = default_config_file()
 
     def test_build_config1(self):
