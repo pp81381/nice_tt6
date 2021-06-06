@@ -24,9 +24,15 @@ jobs:
   - script: pip install tox
     displayName: 'Install tox'
 
-  - script: tox -e py
+  - script: tox -e py --result-json=junit/test-results.xml
     displayName: 'Run tox'
 
+  - task: PublishTestResults@2
+    condition: succeededOrFailed()
+    inputs:
+      testResultsFiles: '**/test-*.xml'
+      testRunTitle: 'Publish test results for Python $(python.version)'
+  
 - job: 'Publish'
   dependsOn: 'Test'
   pool:
