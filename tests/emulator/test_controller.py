@@ -1,19 +1,19 @@
 import asyncio
 from asyncio.streams import StreamWriter
-from nice_tt6.emulator.controller import (
+from nicett6.emulator.controller import (
     TT6Controller,
     DuplicateDeviceError,
     SEND_EOL,
 )
-from nice_tt6.emulator.line_handler import (
+from nicett6.emulator.line_handler import (
     CMD_MOVE_DOWN_STEP,
     CMD_MOVE_POS,
     CMD_MOVE_UP,
     CMD_MOVE_UP_STEP,
     CMD_READ_POS,
 )
-from nice_tt6.emulator.cover_emulator import TT6CoverEmulator
-from nice_tt6.ttbus_device import TTBusDeviceAddress
+from nicett6.emulator.cover_emulator import TT6CoverEmulator
+from nicett6.ttbus_device import TTBusDeviceAddress
 from unittest import IsolatedAsyncioTestCase
 from unittest.mock import AsyncMock, call
 

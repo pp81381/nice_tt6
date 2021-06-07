@@ -1,6 +1,6 @@
 import asyncio
-from nice_tt6.emulator.config import build_config
-from nice_tt6.emulator.controller import make_tt6controller
+from nicett6.emulator.config import build_config
+from nicett6.emulator.controller import make_tt6controller
 
 
 async def main():

@@ -1,4 +1,4 @@
-# nice_tt6
+# nicett6
 
 An asyncio based package to talk to a Nice TT6 control unit for tubular motors using the RS-232 protocol
 
@@ -445,13 +445,13 @@ The package also includes an emulator that can be used for demonstration or test
 Example:
 
 ```
-python -m nice_tt6.emulator
+python -m nicett6.emulator
 ```
 
 Usage:
 
 ```
-usage: python -m nice_tt6.emulator [-h] [-f FILENAME] [-p PORT] [-w] [-W]
+usage: python -m nicett6.emulator [-h] [-f FILENAME] [-p PORT] [-w] [-W]
                    [-i cover_name percentage]
 
 optional arguments:

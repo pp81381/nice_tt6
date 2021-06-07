@@ -1,12 +1,12 @@
 import asyncio
 from contextlib import asynccontextmanager
 import logging
-from nice_tt6.cover import TT6CoverWriter
-from nice_tt6.ttbus_device import TTBusDeviceAddress
-from nice_tt6.ciw_helper import CIWHelper, ImageDef
-from nice_tt6.connection import TT6Reader, TT6Writer, open_connection
-from nice_tt6.decode import PctPosResponse
-from nice_tt6.multiplexer import MultiplexerSerialConnection
+from nicett6.cover import TT6CoverWriter
+from nicett6.ttbus_device import TTBusDeviceAddress
+from nicett6.ciw_helper import CIWHelper, ImageDef
+from nicett6.connection import TT6Reader, TT6Writer, open_connection
+from nicett6.decode import PctPosResponse
+from nicett6.multiplexer import MultiplexerSerialConnection
 
 
 _LOGGER = logging.getLogger(__name__)

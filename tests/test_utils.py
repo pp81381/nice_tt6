@@ -1,5 +1,5 @@
 from unittest import TestCase, IsolatedAsyncioTestCase
-from nice_tt6.utils import (
+from nicett6.utils import (
     get_platform_serial_port,
     hex_arg_to_int,
     pct_arg_to_int,

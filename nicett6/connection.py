@@ -1,9 +1,9 @@
 from contextlib import asynccontextmanager
 import logging
-from nice_tt6.decode import Decode
-from nice_tt6.encode import Encode
-from nice_tt6.utils import async_get_platform_serial_port
-from nice_tt6.multiplexer import (
+from nicett6.decode import Decode
+from nicett6.encode import Encode
+from nicett6.utils import async_get_platform_serial_port
+from nicett6.multiplexer import (
     MultiplexerReader,
     MultiplexerSerialConnection,
     MultiplexerWriter,

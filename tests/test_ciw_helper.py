@@ -1,4 +1,4 @@
-from nice_tt6.ciw_helper import CIWAspectRatioMode, CIWHelper, ImageDef
+from nicett6.ciw_helper import CIWAspectRatioMode, CIWHelper, ImageDef
 from unittest import TestCase
 
 

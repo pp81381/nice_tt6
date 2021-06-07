@@ -1,6 +1,6 @@
 import logging
-from nice_tt6.ttbus_device import TTBusDeviceAddress
-from nice_tt6.utils import hex_arg_to_int, pct_arg_to_int
+from nicett6.ttbus_device import TTBusDeviceAddress
+from nicett6.utils import hex_arg_to_int, pct_arg_to_int
 
 _LOGGER = logging.getLogger(__name__)
 

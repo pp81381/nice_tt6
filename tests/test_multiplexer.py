@@ -1,5 +1,5 @@
 import asyncio
-from nice_tt6.multiplexer import (
+from nicett6.multiplexer import (
     MultiplexerProtocol,
     MultiplexerReader,
     MultiplexerSerialConnection,
@@ -20,7 +20,7 @@ def mock_csc_return_value(*args):
 class TestConnection(IsolatedAsyncioTestCase):
     def setUp(self):
         patcher = patch(
-            "nice_tt6.multiplexer.create_serial_connection",
+            "nicett6.multiplexer.create_serial_connection",
             side_effect=mock_csc_return_value,
         )
         self.addCleanup(patcher.stop)
@@ -52,7 +52,7 @@ class TestReaderAndWriter(IsolatedAsyncioTestCase):
 
     def setUp(self):
         patcher = patch(
-            "nice_tt6.multiplexer.create_serial_connection",
+            "nicett6.multiplexer.create_serial_connection",
             side_effect=mock_csc_return_value,
         )
         self.addCleanup(patcher.stop)

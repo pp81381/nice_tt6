@@ -1,6 +1,6 @@
-from nice_tt6.emulator.config import build_config, default_config_file
-from nice_tt6.emulator.cover_emulator import percent_pos_to_step_num
-from nice_tt6.emulator.line_handler import PRESET_POS_5
+from nicett6.emulator.config import build_config, default_config_file
+from nicett6.emulator.cover_emulator import percent_pos_to_step_num
+from nicett6.emulator.line_handler import PRESET_POS_5
 from contextlib import redirect_stderr
 from io import StringIO
 from unittest import TestCase
@@ -55,9 +55,7 @@ class TestConfig(TestCase):
             ]
         }
         """
-        with patch(
-            "nice_tt6.emulator.config.open", mock_open(read_data=test_json)
-        ) as m:
+        with patch("nicett6.emulator.config.open", mock_open(read_data=test_json)) as m:
             dummy_filename = "dummy"
             config = build_config(["-f", dummy_filename])
             m.assert_called_once_with(dummy_filename)
@@ -77,42 +75,42 @@ class TestConfig(TestCase):
     def test_build_config5a(self):
         """Test web_on config"""
         test_json = """{"web_on": true}"""
-        with patch("nice_tt6.emulator.config.open", mock_open(read_data=test_json)):
+        with patch("nicett6.emulator.config.open", mock_open(read_data=test_json)):
             config = build_config([])
             self.assertEqual(config["web_on"], True)
 
     def test_build_config5b(self):
         """Test web_on config"""
         test_json = """{"web_on": false}"""
-        with patch("nice_tt6.emulator.config.open", mock_open(read_data=test_json)):
+        with patch("nicett6.emulator.config.open", mock_open(read_data=test_json)):
             config = build_config([])
             self.assertEqual(config["web_on"], False)
 
     def test_build_config5c(self):
         """Test --web_on override"""
         test_json = """{"web_on": false}"""
-        with patch("nice_tt6.emulator.config.open", mock_open(read_data=test_json)):
+        with patch("nicett6.emulator.config.open", mock_open(read_data=test_json)):
             config = build_config(["-w"])
             self.assertEqual(config["web_on"], True)
 
     def test_build_config5d(self):
         """Test --web_off override"""
         test_json = """{"web_on": true}"""
-        with patch("nice_tt6.emulator.config.open", mock_open(read_data=test_json)):
+        with patch("nicett6.emulator.config.open", mock_open(read_data=test_json)):
             config = build_config(["-W"])
             self.assertEqual(config["web_on"], False)
 
     def test_build_config5e(self):
         """Test combination of --web_off and --web_on override"""
         test_json = """{"web_on": false}"""
-        with patch("nice_tt6.emulator.config.open", mock_open(read_data=test_json)):
+        with patch("nicett6.emulator.config.open", mock_open(read_data=test_json)):
             config = build_config(["-W", "-w"])
             self.assertEqual(config["web_on"], True)
 
     def test_build_config5f(self):
         """Test combination of --web_on and --web_off override"""
         test_json = """{"web_on": true}"""
-        with patch("nice_tt6.emulator.config.open", mock_open(read_data=test_json)):
+        with patch("nicett6.emulator.config.open", mock_open(read_data=test_json)):
             config = build_config(["-w", "-W"])
             self.assertEqual(config["web_on"], False)
 

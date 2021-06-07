@@ -1,10 +1,10 @@
 import asyncio
 from contextlib import asynccontextmanager
-from nice_tt6.connection import TT6Writer, open_connection, TT6Reader
-from nice_tt6.cover import Cover, TT6CoverWriter
-from nice_tt6.decode import PctPosResponse
-from nice_tt6.multiplexer import MultiplexerSerialConnection
-from nice_tt6.ttbus_device import TTBusDeviceAddress
+from nicett6.connection import TT6Writer, open_connection, TT6Reader
+from nicett6.cover import Cover, TT6CoverWriter
+from nicett6.decode import PctPosResponse
+from nicett6.multiplexer import MultiplexerSerialConnection
+from nicett6.ttbus_device import TTBusDeviceAddress
 
 
 @asynccontextmanager

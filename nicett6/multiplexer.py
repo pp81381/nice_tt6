@@ -1,5 +1,5 @@
 import asyncio
-from nice_tt6.buffer import MessageBuffer
+from nicett6.buffer import MessageBuffer
 import logging
 from serial_asyncio import create_serial_connection
 import weakref

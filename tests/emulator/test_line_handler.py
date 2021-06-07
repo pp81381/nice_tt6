@@ -1,12 +1,12 @@
 import asyncio
-from nice_tt6.emulator.cover_emulator import TT6CoverEmulator
-from nice_tt6.emulator.line_handler import (
+from nicett6.emulator.cover_emulator import TT6CoverEmulator
+from nicett6.emulator.line_handler import (
     LineHandler,
     CMD_STOP,
     CMD_MOVE_DOWN,
     CMD_MOVE_UP,
 )
-from nice_tt6.ttbus_device import TTBusDeviceAddress
+from nicett6.ttbus_device import TTBusDeviceAddress
 from unittest import IsolatedAsyncioTestCase
 from unittest.mock import AsyncMock, MagicMock, PropertyMock
 

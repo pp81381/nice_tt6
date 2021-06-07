@@ -1,9 +1,9 @@
 import asyncio
 from contextlib import contextmanager, ExitStack
 import logging
-from nice_tt6.emulator.cover_emulator import TT6CoverEmulator
-from nice_tt6.emulator.line_handler import LineHandler
-from nice_tt6.utils import AsyncObserver
+from nicett6.emulator.cover_emulator import TT6CoverEmulator
+from nicett6.emulator.line_handler import LineHandler
+from nicett6.utils import AsyncObserver
 
 _LOGGER = logging.getLogger(__name__)
 

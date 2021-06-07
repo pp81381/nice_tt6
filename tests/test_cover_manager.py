@@ -1,10 +1,10 @@
 import asyncio
-from nice_tt6.ciw_helper import CIWAspectRatioMode
-from nice_tt6.decode import PctPosResponse
-from nice_tt6.cover_manager import CoverManager
-from nice_tt6.cover import Cover
-from nice_tt6.ttbus_device import TTBusDeviceAddress
-from nice_tt6.utils import run_coro_after_delay
+from nicett6.ciw_helper import CIWAspectRatioMode
+from nicett6.decode import PctPosResponse
+from nicett6.cover_manager import CoverManager
+from nicett6.cover import Cover
+from nicett6.ttbus_device import TTBusDeviceAddress
+from nicett6.utils import run_coro_after_delay
 from unittest import IsolatedAsyncioTestCase
 from unittest.mock import AsyncMock, MagicMock
 

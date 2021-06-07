@@ -1,8 +1,8 @@
 import argparse
 import asyncio
 import logging
-from nice_tt6.cover_manager import open_cover_manager
-from nice_tt6.ttbus_device import TTBusDeviceAddress
+from nicett6.cover_manager import open_cover_manager
+from nicett6.ttbus_device import TTBusDeviceAddress
 
 _LOGGER = logging.getLogger(__name__)
 

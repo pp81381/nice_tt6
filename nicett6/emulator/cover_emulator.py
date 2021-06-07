@@ -1,7 +1,7 @@
 import asyncio
 import logging
 from contextlib import AsyncExitStack
-from nice_tt6.utils import AsyncObservable
+from nicett6.utils import AsyncObservable
 
 _LOGGER = logging.getLogger(__name__)
 

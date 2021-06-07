@@ -1,5 +1,5 @@
 import asyncio
-from nice_tt6.emulator.cover_emulator import TT6CoverEmulator
+from nicett6.emulator.cover_emulator import TT6CoverEmulator
 from unittest import IsolatedAsyncioTestCase
 
 

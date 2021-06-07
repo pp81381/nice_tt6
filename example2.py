@@ -1,8 +1,8 @@
 import asyncio
 import logging
-from nice_tt6.connection import open_connection
-from nice_tt6.ttbus_device import TTBusDeviceAddress
-from nice_tt6.utils import run_coro_after_delay, parse_example_args
+from nicett6.connection import open_connection
+from nicett6.ttbus_device import TTBusDeviceAddress
+from nicett6.utils import run_coro_after_delay, parse_example_args
 
 _LOGGER = logging.getLogger(__name__)
 

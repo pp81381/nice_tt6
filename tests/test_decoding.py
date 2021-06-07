@@ -1,5 +1,5 @@
 import unittest
-from nice_tt6.decode import (
+from nicett6.decode import (
     Decode,
     AckResponse,
     ErrorResponse,
@@ -8,7 +8,7 @@ from nice_tt6.decode import (
     InvalidResponseError,
     PctPosResponse,
 )
-from nice_tt6.ttbus_device import TTBusDeviceAddress
+from nicett6.ttbus_device import TTBusDeviceAddress
 
 
 class TestDecoding(unittest.TestCase):

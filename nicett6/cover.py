@@ -1,7 +1,7 @@
 import logging
-from nice_tt6.ttbus_device import TTBusDeviceAddress
-from nice_tt6.connection import TT6Writer
-from nice_tt6.utils import Observable, check_pct
+from nicett6.ttbus_device import TTBusDeviceAddress
+from nicett6.connection import TT6Writer
+from nicett6.utils import Observable, check_pct
 import time
 
 _LOGGER = logging.getLogger(__name__)

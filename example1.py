@@ -1,10 +1,9 @@
 import asyncio
 import logging
-import argparse
-from nice_tt6.ciw_helper import CIWAspectRatioMode, ImageDef
-from nice_tt6.ciw_manager import CIWManager, open_ciw_manager
-from nice_tt6.ttbus_device import TTBusDeviceAddress
-from nice_tt6.utils import run_coro_after_delay, parse_example_args
+from nicett6.ciw_helper import CIWAspectRatioMode, ImageDef
+from nicett6.ciw_manager import CIWManager, open_ciw_manager
+from nicett6.ttbus_device import TTBusDeviceAddress
+from nicett6.utils import run_coro_after_delay, parse_example_args
 
 _LOGGER = logging.getLogger(__name__)
 

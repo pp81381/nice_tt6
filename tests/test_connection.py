@@ -1,6 +1,6 @@
-from nice_tt6.decode import AckResponse
-from nice_tt6.connection import open_connection
-from nice_tt6.ttbus_device import TTBusDeviceAddress
+from nicett6.decode import AckResponse
+from nicett6.connection import open_connection
+from nicett6.ttbus_device import TTBusDeviceAddress
 from unittest import IsolatedAsyncioTestCase
 from unittest.mock import call, MagicMock, patch
 
@@ -14,7 +14,7 @@ def mock_csc_return_value(*args, **kwargs):
 class TestReaderAndWriter(IsolatedAsyncioTestCase):
     def setUp(self):
         patcher = patch(
-            "nice_tt6.multiplexer.create_serial_connection",
+            "nicett6.multiplexer.create_serial_connection",
             side_effect=mock_csc_return_value,
         )
         self.addCleanup(patcher.stop)

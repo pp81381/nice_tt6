@@ -1,6 +1,6 @@
-from nice_tt6.ttbus_device import TTBusDeviceAddress
+from nicett6.ttbus_device import TTBusDeviceAddress
 from unittest import IsolatedAsyncioTestCase
-from nice_tt6.cover import Cover, TT6CoverWriter
+from nicett6.cover import Cover, TT6CoverWriter
 from unittest import TestCase
 from unittest.mock import AsyncMock
 import time

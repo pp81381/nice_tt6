@@ -1,6 +1,6 @@
 import unittest
-from nice_tt6.ttbus_device import TTBusDeviceAddress
-from nice_tt6.encode import Encode
+from nicett6.ttbus_device import TTBusDeviceAddress
+from nicett6.encode import Encode
 
 
 class TestEncoding(unittest.TestCase):

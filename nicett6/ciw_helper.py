@@ -1,8 +1,8 @@
 from enum import Enum
 import logging
 import math
-from nice_tt6.utils import check_pct
-from nice_tt6.cover import Cover
+from nicett6.utils import check_pct
+from nicett6.cover import Cover
 
 
 _LOGGER = logging.getLogger(__name__)

@@ -1,5 +1,5 @@
 import unittest
-from nice_tt6.ttbus_device import TTBusDeviceAddress
+from nicett6.ttbus_device import TTBusDeviceAddress
 
 
 class TestDevice(unittest.TestCase):

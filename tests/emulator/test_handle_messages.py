@@ -1,5 +1,5 @@
 import asyncio
-from nice_tt6.emulator.controller import TT6Controller
+from nicett6.emulator.controller import TT6Controller
 from unittest import IsolatedAsyncioTestCase
 from unittest.mock import AsyncMock, patch, call
 
@@ -13,7 +13,7 @@ class TestHandleMessages(IsolatedAsyncioTestCase):
     async def test_handle_messages1(self):
         controller = TT6Controller(False)
         with patch(
-            "nice_tt6.emulator.line_handler.LineHandler.handle_line"
+            "nicett6.emulator.line_handler.LineHandler.handle_line"
         ) as handle_line:
             reader = AsyncMock(spec_set=asyncio.StreamReader)
             reader.readuntil.side_effect = [self.CMD1, self.CMD2, b""]
@@ -27,7 +27,7 @@ class TestHandleMessages(IsolatedAsyncioTestCase):
         ex = asyncio.IncompleteReadError(b"\n", None)
         controller = TT6Controller(False)
         with patch(
-            "nice_tt6.emulator.line_handler.LineHandler.handle_line"
+            "nicett6.emulator.line_handler.LineHandler.handle_line"
         ) as handle_line:
             reader = AsyncMock(spec_set=asyncio.StreamReader)
             reader.readuntil.side_effect = [self.CMD1, self.CMD2, ex]
@@ -41,7 +41,7 @@ class TestHandleMessages(IsolatedAsyncioTestCase):
         ex = asyncio.IncompleteReadError(b"\njunk", None)
         controller = TT6Controller(False)
         with patch(
-            "nice_tt6.emulator.line_handler.LineHandler.handle_line"
+            "nicett6.emulator.line_handler.LineHandler.handle_line"
         ) as handle_line:
             reader = AsyncMock(spec_set=asyncio.StreamReader)
             reader.readuntil.side_effect = [self.CMD1, self.CMD2, ex]

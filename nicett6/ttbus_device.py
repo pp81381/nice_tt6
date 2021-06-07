@@ -1,4 +1,4 @@
-from nice_tt6.utils import AsyncObservable
+from nicett6.utils import AsyncObservable
 
 
 class TTBusDeviceAddress:

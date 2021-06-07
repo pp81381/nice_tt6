@@ -1,7 +1,7 @@
 import argparse
 import json
-from nice_tt6.emulator.cover_emulator import TT6CoverEmulator
-from nice_tt6.emulator.line_handler import (
+from nicett6.emulator.cover_emulator import TT6CoverEmulator
+from nicett6.emulator.line_handler import (
     PRESET_POS_1,
     PRESET_POS_2,
     PRESET_POS_3,
@@ -9,7 +9,7 @@ from nice_tt6.emulator.line_handler import (
     PRESET_POS_5,
     PRESET_POS_6,
 )
-from nice_tt6.ttbus_device import TTBusDeviceAddress
+from nicett6.ttbus_device import TTBusDeviceAddress
 from pathlib import PurePath
 
 
@@ -42,7 +42,7 @@ def default_config_file():
 
 
 def build_config(args=None):
-    parser = argparse.ArgumentParser(prog="python -m nice_tt6.emulator")
+    parser = argparse.ArgumentParser(prog="python -m nicett6.emulator")
     parser.add_argument(
         "-f",
         "--filename",

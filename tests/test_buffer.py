@@ -1,5 +1,5 @@
 import unittest
-from nice_tt6.buffer import MessageBuffer
+from nicett6.buffer import MessageBuffer
 
 
 class TestBuffer(unittest.TestCase):
