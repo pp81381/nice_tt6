@@ -1,12 +1,10 @@
 import asyncio
-from nicett6.ciw_helper import CIWAspectRatioMode
 from nicett6.decode import PctPosResponse
 from nicett6.cover_manager import CoverManager
 from nicett6.cover import Cover
 from nicett6.ttbus_device import TTBusDeviceAddress
-from nicett6.utils import run_coro_after_delay
 from unittest import IsolatedAsyncioTestCase
-from unittest.mock import AsyncMock, MagicMock
+from unittest.mock import AsyncMock, MagicMock, patch
 
 
 async def cleanup_task(task):
@@ -15,22 +13,36 @@ async def cleanup_task(task):
     await task
 
 
+def make_mock_conn():
+    mock_reader = AsyncMock(name="reader")
+    mock_reader.__aiter__.return_value = [
+        PctPosResponse(TTBusDeviceAddress(0x02, 0x04), 110),
+        PctPosResponse(TTBusDeviceAddress(0x03, 0x04), 539),  # Ignored
+    ]
+    conn = AsyncMock()
+    conn.add_reader = MagicMock(return_value=mock_reader)
+    conn.get_writer = MagicMock(return_value=AsyncMock(name="writer"))
+    conn.close = MagicMock()
+    return conn
+
+
 class TestCoverManager(IsolatedAsyncioTestCase):
     def setUp(self):
-        mock_reader = AsyncMock(name="reader")
-        mock_reader.__aiter__.return_value = [
-            PctPosResponse(TTBusDeviceAddress(0x02, 0x04), 110),
-            PctPosResponse(TTBusDeviceAddress(0x03, 0x04), 539),  # Ignored
-        ]
-        self.conn = AsyncMock()
-        self.conn.add_reader = MagicMock(return_value=mock_reader)
-        self.conn.get_writer = MagicMock(return_value=AsyncMock(name="writer"))
+        self.conn = make_mock_conn()
+        patcher = patch(
+            "nicett6.cover_manager.TT6Connection",
+            return_value=self.conn,
+        )
+        self.addCleanup(patcher.stop)
+        patcher.start()
         self.tt_addr = TTBusDeviceAddress(0x02, 0x04)
         self.max_drop = 2.0
-        self.mgr = CoverManager(self.conn, self.tt_addr, self.max_drop)
+        self.mgr = CoverManager("DUMMY_SERIAL_PORT", self.tt_addr, self.max_drop)
+
+    async def asyncSetUp(self):
+        await self.mgr.open()
 
     async def test1(self):
-        await self.mgr._start()
         writer = self.conn.get_writer.return_value
         writer.send_web_on.assert_awaited_once()
         writer.send_web_pos_request.assert_awaited_with(self.tt_addr)
@@ -89,3 +101,29 @@ class TestCoverManager(IsolatedAsyncioTestCase):
         await self.mgr.send_stop_command()
         writer = self.conn.get_writer.return_value
         writer.send_simple_command.assert_awaited_with(self.tt_addr, "STOP"),
+
+
+class TestCoverManagerContextManager(IsolatedAsyncioTestCase):
+    def setUp(self):
+        self.conn = make_mock_conn()
+        patcher = patch(
+            "nicett6.cover_manager.TT6Connection",
+            return_value=self.conn,
+        )
+        self.addCleanup(patcher.stop)
+        patcher.start()
+        self.tt_addr = TTBusDeviceAddress(0x02, 0x04)
+        self.max_drop = 2.0
+
+    async def test1(self):
+        async with CoverManager(
+            "DUMMY_SERIAL_PORT", self.tt_addr, self.max_drop
+        ) as mgr:
+            writer = self.conn.get_writer.return_value
+            writer.send_web_on.assert_awaited_once()
+            writer.send_web_pos_request.assert_awaited_with(self.tt_addr)
+            await mgr.send_open_command()
+            writer = self.conn.get_writer.return_value
+            writer.send_simple_command.assert_awaited_with(self.tt_addr, "MOVE_DOWN"),
+            self.conn.close.assert_not_called()
+        self.conn.close.assert_called_once()

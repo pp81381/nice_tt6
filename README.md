@@ -192,8 +192,7 @@ A set of components to provide a high level interface to manage a Cover.    Coul
 
 Component|Description
 --|--
-`open_cover_manager(tt_addr, max_drop[, serial_port])`|A factory function that opens a serial connection and returns an initialised and async context managed `CoverManager`
-`CoverManager`|A class that manages a connection, a `Cover` and a `TT6CoverWriter` to control a Cover
+`CoverManager`|A class that manages the controller connection, a `Cover` and a `TT6CoverWriter` to control a Cover<br>Can be used as an async context manager
 `Cover`|A sensor class that can be used to monitor the position of a cover
 `TT6CoverWriter`|Writer class to be used in conjunction with a `Cover` that ensures that movement is properly tracked
 
@@ -215,7 +214,7 @@ async def log_cover_state(cover):
 async def example(serial_port):
     tt_addr = TTBusDeviceAddress(0x02, 0x04)
     max_drop = 2.0
-    async with open_cover_manager(tt_addr, max_drop, serial_port) as mgr:
+    async with CoverManager(serial_port, tt_addr, max_drop) as mgr:
         message_tracker_task = asyncio.create_task(mgr.message_tracker())
         logger_task = asyncio.create_task(log_cover_state(mgr.cover))
 
@@ -235,7 +234,15 @@ async def example(serial_port):
 
 A class that manages a connection, a `Cover` and a `TT6CoverWriter` to control a Cover
 
-Intended to be constructed by the `open_cover_manager` factory method
+Can be used as an async context manager
+
+Constructor parameters:
+
+Parameter|Description
+--|--
+`serial_port`|The serial port to use.  See [Opening a connection](#opening-a-connection) for the valid values.
+`tt_addr`|the TTBus address of the Cover
+`max_drop`|max drop of the Cover in metres
 
 Property|Description
 --|--
@@ -318,8 +325,7 @@ A high level API to manage a Constant Image Width retractable projector screen w
 
 Component|Description
 --|--
-`open_ciw_manager(screen_tt_addr, mask_tt_addr, screen_max_drop, mask_max_drop, image_def[, serial_port])`|A factory function that opens a serial connection and returns an initialised and async context managed `CIWManager`
-`CIWManager`|A class that manages the connection, screen and mask<br>Tracks movement of the covers<br>Provides writer methods to manage the screen and mask simultaneously
+`CIWManager`|A class that manages the controller connection, screen and mask<br>Can be used as an async context manager<br>Tracks movement of the covers<br>Provides writer methods to manage the screen and mask simultaneously
 `CIWHelper`|A sensor class that represents the positions of a screen and mask<br>Has properties to represent the visible image area<br>Provides methods to calculate the drops needed for a specific aspect ratio
 `ImageDef`|A class that describes where the image area is located on a cover that is a screen
 
@@ -327,13 +333,13 @@ Component|Description
 
 ```python
 async def main(serial_port=None):
-    async with open_ciw_manager(
+    async with CIWManager(
+        serial_port,
         TTBusDeviceAddress(0x02, 0x04),
         TTBusDeviceAddress(0x03, 0x04),
         1.77,
         0.6,
         ImageDef(0.05, 1.57, 16 / 9),
-        serial_port,
     ) as mgr:
         reader_task = asyncio.create_task(mgr.message_tracker())
         await mgr.send_set_aspect_ratio(
@@ -350,8 +356,18 @@ async def main(serial_port=None):
 
 A class that manages the connection, screen and mask
 
-Intended to be constructed by the `open_ciw_manager` factory function
+Can be used as an async context manager
 
+Constructor parameters:
+
+Parameter|Description
+--|--
+`serial_port`|The serial port to use.  See [Opening a connection](#opening-a-connection) for the valid values.
+`screen_tt_addr`|the TTBus address of the screen
+`mask_tt_addr`|the TTBus address of the mask
+`screen_max_drop`|max drop of screen in metres
+`mask_max_drop`|max drop of mask in metres
+`image_def`|An ImageDef object describing where the image area on the screen cover is
 
 Property|Description
 --|--

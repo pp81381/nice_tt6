@@ -1,22 +1,8 @@
 import asyncio
-from contextlib import asynccontextmanager
-from nicett6.connection import TT6Writer, open_connection, TT6Reader
+from nicett6.connection import TT6Connection, TT6Writer, TT6Reader
 from nicett6.cover import Cover, TT6CoverWriter
 from nicett6.decode import PctPosResponse
-from nicett6.multiplexer import MultiplexerSerialConnection
 from nicett6.ttbus_device import TTBusDeviceAddress
-
-
-@asynccontextmanager
-async def open_cover_manager(
-    tt_addr,
-    max_drop,
-    serial_port=None,
-):
-    async with open_connection(serial_port) as conn:
-        mgr = CoverManager(conn, tt_addr, max_drop)
-        await mgr._start()
-        yield mgr
 
 
 class CoverManager:
@@ -25,17 +11,42 @@ class CoverManager:
 
     def __init__(
         self,
-        conn: MultiplexerSerialConnection,
+        serial_port: str,
         cover_tt_addr: TTBusDeviceAddress,
         cover_max_drop: float,
     ):
-        self._conn = conn
+        self._serial_port = serial_port
+        self._cover_tt_addr = cover_tt_addr
         self.cover = Cover("Cover", cover_max_drop)
+        self._message_tracker_reader: TT6Reader = None
+        self._writer: TT6Writer = None
+        self._cover_writer: TT6CoverWriter = None
+
+    async def __aenter__(self):
+        await self.open()
+        return self
+
+    async def __aexit__(self, exception_type, exception_value, traceback):
+        self.close()
+
+    async def open(self):
+        self._conn = TT6Connection()
+        await self._conn.open(self._serial_port)
         # NOTE: reader is created here rather than in message_tracker
         # to ensure that all messages from this moment on are captured
         self._message_tracker_reader: TT6Reader = self._conn.add_reader()
-        self._writer: TT6Writer = self._conn.get_writer()
-        self._cover_writer = TT6CoverWriter(cover_tt_addr, self.cover, self._writer)
+        self._writer = self._conn.get_writer()
+        self._cover_writer = TT6CoverWriter(
+            self._cover_tt_addr, self.cover, self._writer
+        )
+        await self._start()
+
+    def close(self):
+        self._conn.close()
+        self._conn = None
+        self._message_tracker_reader = None
+        self._writer = None
+        self._cover_writer = None
 
     async def _start(self):
         await self._writer.send_web_on()

@@ -1,7 +1,7 @@
 import asyncio
 import logging
 from nicett6.ciw_helper import CIWAspectRatioMode, ImageDef
-from nicett6.ciw_manager import CIWManager, open_ciw_manager
+from nicett6.ciw_manager import CIWManager
 from nicett6.ttbus_device import TTBusDeviceAddress
 from nicett6.utils import run_coro_after_delay, parse_example_args
 
@@ -43,13 +43,13 @@ async def example_ciw2(mgr: CIWManager):
 
 
 async def main(serial_port, example):
-    async with open_ciw_manager(
+    async with CIWManager(
+        serial_port,
         TTBusDeviceAddress(0x02, 0x04),
         TTBusDeviceAddress(0x03, 0x04),
         1.77,
         0.6,
         ImageDef(0.05, 1.57, 16 / 9),
-        serial_port,
     ) as mgr:
         reader_task = asyncio.create_task(mgr.message_tracker())
         example_task = asyncio.create_task(example(mgr))
