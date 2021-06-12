@@ -78,7 +78,7 @@ class TestCIWManager(IsolatedAsyncioTestCase):
         await task
 
     async def test4(self):
-        self.mgr.helper.screen.moved()
+        await self.mgr.helper.screen.moved()
         task = asyncio.create_task(self.mgr.wait_for_motion_to_complete())
         self.addAsyncCleanup(cleanup_task, task)
 
@@ -99,14 +99,11 @@ class TestCIWManager(IsolatedAsyncioTestCase):
         self.assertEqual(task.done(), True)
         await task
 
-    async def set_mask_moved(self):
-        self.mgr.helper.mask.moved()
-
     async def test5(self):
-        self.mgr.helper.screen.moved()
+        await self.mgr.helper.screen.moved()
         asyncio.create_task(
             run_coro_after_delay(
-                self.set_mask_moved(), CIWManager.POLLING_INTERVAL + 0.2
+                self.mgr.helper.mask.moved(), CIWManager.POLLING_INTERVAL + 0.2
             )
         )
         task = asyncio.create_task(self.mgr.wait_for_motion_to_complete())

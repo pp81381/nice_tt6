@@ -61,7 +61,7 @@ class TestCoverManager(IsolatedAsyncioTestCase):
         await task
 
     async def test4(self):
-        self.mgr.cover.moved()
+        await self.mgr.cover.moved()
         task = asyncio.create_task(self.mgr.wait_for_motion_to_complete())
         self.addAsyncCleanup(cleanup_task, task)
 
@@ -78,9 +78,6 @@ class TestCoverManager(IsolatedAsyncioTestCase):
         self.assertEqual(self.mgr.cover.is_moving, False)
         self.assertEqual(task.done(), True)
         await task
-
-    async def set_mask_moved(self):
-        self.mgr.helper.mask.moved()
 
     async def test6(self):
         await self.mgr.tt6_cover.send_drop_pct_command(0.5)

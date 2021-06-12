@@ -37,16 +37,16 @@ class Cover(AsyncObservable):
         prev_drop_pct = self._drop_pct  # Preserve state in case of exception
         self._drop_pct = check_pct(f"{self.name} drop", value)
         self._prev_drop_pct = prev_drop_pct
-        self.moved()
-        await self.notify_observers()
+        await self.moved()
 
     @property
     def drop(self):
         return (1.0 - self._drop_pct) * self.max_drop
 
-    def moved(self):
+    async def moved(self):
         """Called to indicate movement"""
         self._prev_movement = time.perf_counter()
+        await self.notify_observers()
 
     @property
     def is_moving(self):
@@ -101,26 +101,27 @@ class TT6Cover:
     async def send_drop_pct_command(self, drop_pct):
         _LOGGER.debug(f"moving {self.cover.name} to {drop_pct}")
         await self.writer.send_web_move_command(self.tt_addr, drop_pct)
-        self.cover.moved()
+        await self.cover.moved()
 
     async def send_close_command(self):
         _LOGGER.debug(f"sending MOVE_UP to {self.cover.name}")
         # Could also be implemented by setting drop_pct to 1.0
         await self.writer.send_simple_command(self.tt_addr, "MOVE_UP")
-        self.cover.moved()
+        await self.cover.moved()
 
     async def send_open_command(self):
         _LOGGER.debug(f"sending MOVE_DOWN to {self.cover.name}")
         # Could also be implemented by setting drop_pct to 0.0
         await self.writer.send_simple_command(self.tt_addr, "MOVE_DOWN")
-        self.cover.moved()
+        await self.cover.moved()
 
     async def send_preset_command(self, preset_num: int):
         preset_command = f"MOVE_POS_{preset_num:d}"
         _LOGGER.debug(f"sending {preset_command} to {self.cover.name}")
         await self.writer.send_simple_command(self.tt_addr, preset_command)
-        self.cover.moved()
+        await self.cover.moved()
 
     async def send_stop_command(self):
         _LOGGER.debug(f"sending STOP to {self.cover.name}")
         await self.writer.send_simple_command(self.tt_addr, "STOP")
+        await self.cover.moved()
