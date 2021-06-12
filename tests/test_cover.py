@@ -1,8 +1,8 @@
+import asyncio
 from nicett6.ttbus_device import TTBusDeviceAddress
 from unittest import IsolatedAsyncioTestCase
 from nicett6.cover import Cover, TT6Cover
-from unittest.mock import AsyncMock
-import time
+from unittest.mock import AsyncMock, patch
 
 
 class TestCover(IsolatedAsyncioTestCase):
@@ -42,7 +42,7 @@ class TestCover(IsolatedAsyncioTestCase):
         self.assertEqual(self.cover.is_moving, True)
         self.assertEqual(self.cover.is_opening, True)
         self.assertEqual(self.cover.is_closing, False)
-        time.sleep(self.cover.MOVEMENT_THRESHOLD_INTERVAL + 0.1)
+        await asyncio.sleep(self.cover.MOVEMENT_THRESHOLD_INTERVAL + 0.1)
         self.assertEqual(self.cover.is_closed, False)
         self.assertEqual(self.cover.is_moving, False)
         self.assertEqual(self.cover.is_opening, False)
@@ -56,7 +56,7 @@ class TestCover(IsolatedAsyncioTestCase):
         self.assertEqual(self.cover.is_moving, True)
         self.assertEqual(self.cover.is_opening, False)
         self.assertEqual(self.cover.is_closing, True)
-        time.sleep(self.cover.MOVEMENT_THRESHOLD_INTERVAL + 0.1)
+        await asyncio.sleep(self.cover.MOVEMENT_THRESHOLD_INTERVAL + 0.1)
         self.assertEqual(self.cover.is_closed, True)
         self.assertEqual(self.cover.is_moving, False)
         self.assertEqual(self.cover.is_opening, False)
@@ -110,12 +110,25 @@ class TestCover(IsolatedAsyncioTestCase):
             with self.subTest(name):
                 if drop_pct_to_set is not None:
                     await self.cover.set_drop_pct(drop_pct_to_set)
-                time.sleep(sleep_before_check)
+                await asyncio.sleep(sleep_before_check)
                 self.assertAlmostEqual(self.cover.drop_pct, drop_pct)
                 self.assertEqual(self.cover.is_closed, is_closed)
                 self.assertEqual(self.cover.is_moving, is_moving)
                 self.assertEqual(self.cover.is_opening, is_opening)
                 self.assertEqual(self.cover.is_closing, is_closing)
+
+    async def test9(self):
+        with patch("nicett6.cover.Cover.notify_observers") as p:
+            self.assertTrue(await self.cover.check_for_idle())
+            p.assert_not_awaited()
+            await self.cover.set_drop_pct(0.9)
+            p.assert_awaited_once()
+            p.reset_mock()
+            self.assertFalse(await self.cover.check_for_idle())
+            p.assert_not_awaited()
+            await asyncio.sleep(self.cover.MOVEMENT_THRESHOLD_INTERVAL + 0.1)
+            self.assertTrue(await self.cover.check_for_idle())
+            p.assert_awaited_once()
 
 
 class TestCoverWriter(IsolatedAsyncioTestCase):

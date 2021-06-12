@@ -94,14 +94,15 @@ class CIWManager:
 
     async def wait_for_motion_to_complete(self):
         """
-        Poll for motion to complete
+        Poll for motion of *both* screen and mask to complete
 
         Make sure that Cover.moving() is called when movement
         is initiated for this method to work reliably (see CoverWriter)
+        Has the side effect of notifying observers of the idle state
         """
         while True:
             await asyncio.sleep(self.POLLING_INTERVAL)
-            if not self.helper.screen.is_moving and not self.helper.mask.is_moving:
+            if await self.helper.check_for_idle():
                 return
 
     async def send_pos_request(self):

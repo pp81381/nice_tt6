@@ -78,6 +78,16 @@ class CIWHelper:
         ih = self.image_height
         return None if ih is None else self.image_width / ih
 
+    async def check_for_idle(self):
+        """
+        Check that *both* screen and mask are idle
+
+        Has side effect of notifying observers that movement has completed
+        """
+        screen_is_idle = await self.screen.check_for_idle()
+        mask_is_idle = await self.mask.check_for_idle()
+        return screen_is_idle and mask_is_idle  # Beware of short circuit
+
     def calculate_new_drops(self, *args, **kwargs):
         try:
             return self._calculate_new_drops(*args, **kwargs)

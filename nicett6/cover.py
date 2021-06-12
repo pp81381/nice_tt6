@@ -19,6 +19,7 @@ class Cover(AsyncObservable):
         self.max_drop = max_drop
         self._drop_pct = 1.0
         self._prev_movement = time.perf_counter() - self.MOVEMENT_THRESHOLD_INTERVAL
+        self._was_moving = False
         self._prev_drop_pct = self._drop_pct
 
     def __repr__(self):
@@ -47,6 +48,15 @@ class Cover(AsyncObservable):
         """Called to indicate movement"""
         self._prev_movement = time.perf_counter()
         await self.notify_observers()
+
+    async def check_for_idle(self):
+        """Used to notify observers that movement has completed"""
+        if self.is_moving:
+            self._was_moving = True
+        elif self._was_moving:
+            self._was_moving = False
+            await self.notify_observers()
+        return not self._was_moving
 
     @property
     def is_moving(self):

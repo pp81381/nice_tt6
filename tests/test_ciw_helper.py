@@ -1,5 +1,8 @@
+import asyncio
 from nicett6.ciw_helper import CIWAspectRatioMode, CIWHelper, ImageDef
+from nicett6.cover import Cover
 from unittest import TestCase, IsolatedAsyncioTestCase
+from unittest.mock import patch
 
 
 class TestImageDef(TestCase):
@@ -341,3 +344,48 @@ class TestCIW(IsolatedAsyncioTestCase):
         await self.helper.mask.set_drop_pct(0.0)
         with self.assertRaises(ValueError):
             self.helper._calculate_new_drops(16 / 9, CIWAspectRatioMode.FIXED_MIDDLE)
+
+    async def test18(self):
+        """Test check_for_idle with both covers at once"""
+        with patch("nicett6.cover.Cover.notify_observers") as p:
+            self.assertTrue(await self.helper.check_for_idle())
+            p.assert_not_awaited()
+            await self.helper.screen.set_drop_pct(0.9)
+            p.assert_awaited_once()
+            p.reset_mock()
+            await self.helper.mask.set_drop_pct(0.9)
+            p.assert_awaited_once()
+            p.reset_mock()
+            self.assertFalse(await self.helper.check_for_idle())
+            p.assert_not_awaited()
+            await asyncio.sleep(Cover.MOVEMENT_THRESHOLD_INTERVAL + 0.1)
+            self.assertTrue(await self.helper.check_for_idle())
+            self.assertEqual(p.await_count, 2)
+
+    async def test19(self):
+        """Test check_for_idle with mask only"""
+        with patch("nicett6.cover.Cover.notify_observers") as p:
+            self.assertTrue(await self.helper.check_for_idle())
+            p.assert_not_awaited()
+            await self.helper.mask.set_drop_pct(0.9)
+            p.assert_awaited_once()
+            p.reset_mock()
+            self.assertFalse(await self.helper.check_for_idle())
+            p.assert_not_awaited()
+            await asyncio.sleep(Cover.MOVEMENT_THRESHOLD_INTERVAL + 0.1)
+            self.assertTrue(await self.helper.check_for_idle())
+            self.assertEqual(p.await_count, 1)
+
+    async def test20(self):
+        """Test check_for_idle with screen only"""
+        with patch("nicett6.cover.Cover.notify_observers") as p:
+            self.assertTrue(await self.helper.check_for_idle())
+            p.assert_not_awaited()
+            await self.helper.screen.set_drop_pct(0.9)
+            p.assert_awaited_once()
+            p.reset_mock()
+            self.assertFalse(await self.helper.check_for_idle())
+            p.assert_not_awaited()
+            await asyncio.sleep(Cover.MOVEMENT_THRESHOLD_INTERVAL + 0.1)
+            self.assertTrue(await self.helper.check_for_idle())
+            self.assertEqual(p.await_count, 1)

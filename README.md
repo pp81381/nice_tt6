@@ -252,7 +252,7 @@ Property|Description
 Method|Description
 --|--
 `CoverManager.message_tracker()`|A coroutine that must be running in the background for the manager to be able to track cover positions
-`CoverManager.wait_for_motion_to_complete()`|Waits for motion to complete
+`CoverManager.wait_for_motion_to_complete()`|Waits for motion to complete<br>Has side effect of notifying observers of the cover when it goes idle
 
 
 ## Cover
@@ -290,8 +290,9 @@ Property|Description
 
 Method|Description
 --|--
-`Cover.set_drop_pct`|set the percentage drop (0.0 = fully open/down, 1.0 = fully closed/up) - async
-`Cover.moved()`|called to indicate movement<br>When initiating movement, call `moved()` so that `is_moving` will be meaningful before the first POD message comes back from the cover
+`Cover.set_drop_pct`|Set the percentage drop (0.0 = fully open/down, 1.0 = fully closed/up) - async<br>Will notify observers of the state change
+`Cover.moved()`|Called to indicate movement<br>When initiating movement, call `moved()` so that `is_moving` will be meaningful in the interval before the first POS message comes back from the cover<br>Will notify observers of the state change
+`Cover.check_for_idle()`|Called to check whether movement has ceased<br>Returns True if the cover is idle<br>Will notify observers of the state change if the cover became idle since the last call
 
 
 ## TT6Cover
@@ -381,7 +382,7 @@ Method|Description
 `CIWManager.send_open_command()`|Send an open command to the controller for the screen and mask
 `CIWManager.send_stop_command()`|Send a stop command to the controller for the screen and mask
 `CIWManager.send_set_aspect_ratio(*args, **kwargs)`|Send commands to set a specific aspect ratio<br>See `CIWHelper` for more details
-`CIWManager.wait_for_motion_to_complete()`|Waits for motion to complete
+`CIWManager.wait_for_motion_to_complete()`|Waits for motion to complete<br>Has side effect of notifying observers of the covers when they go idle
 
 ## CIWHelper
 

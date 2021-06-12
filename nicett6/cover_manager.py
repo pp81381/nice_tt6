@@ -62,8 +62,9 @@ class CoverManager:
 
         Make sure that Cover.moving() is called when movement
         is initiated for this method to work reliably (see CoverWriter)
+        Has the side effect of notifying observers of the idle state
         """
         while True:
             await asyncio.sleep(self.POLLING_INTERVAL)
-            if not self.cover.is_moving:
+            if await self.cover.check_for_idle():
                 return

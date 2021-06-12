@@ -52,31 +52,39 @@ class TestCoverManager(IsolatedAsyncioTestCase):
         self.assertAlmostEqual(self.mgr.cover.drop, 1.78)
 
     async def test3(self):
-        self.assertEqual(self.mgr.cover.is_moving, False)
+        self.assertFalse(self.mgr.cover.is_moving)
+        self.assertTrue(await self.mgr.cover.check_for_idle())
         task = asyncio.create_task(self.mgr.wait_for_motion_to_complete())
         self.addAsyncCleanup(cleanup_task, task)
-        self.assertEqual(task.done(), False)
+        self.assertFalse(task.done())
         await asyncio.sleep(CoverManager.POLLING_INTERVAL + 0.1)
-        self.assertEqual(task.done(), True)
+        self.assertTrue(task.done())
         await task
+        self.assertTrue(await self.mgr.cover.check_for_idle())
 
     async def test4(self):
+        self.assertTrue(await self.mgr.cover.check_for_idle())
         await self.mgr.cover.moved()
+        self.assertFalse(await self.mgr.cover.check_for_idle())
+
         task = asyncio.create_task(self.mgr.wait_for_motion_to_complete())
         self.addAsyncCleanup(cleanup_task, task)
 
-        self.assertEqual(self.mgr.cover.is_moving, True)
-        self.assertEqual(task.done(), False)
+        self.assertTrue(self.mgr.cover.is_moving)
+        self.assertFalse(await self.mgr.cover.check_for_idle())
+        self.assertFalse(task.done())
 
         await asyncio.sleep(CoverManager.POLLING_INTERVAL + 0.1)
 
-        self.assertEqual(self.mgr.cover.is_moving, True)
-        self.assertEqual(task.done(), False)
+        self.assertTrue(self.mgr.cover.is_moving)
+        self.assertFalse(await self.mgr.cover.check_for_idle())
+        self.assertFalse(task.done())
 
         await asyncio.sleep(Cover.MOVEMENT_THRESHOLD_INTERVAL)
 
-        self.assertEqual(self.mgr.cover.is_moving, False)
-        self.assertEqual(task.done(), True)
+        self.assertFalse(self.mgr.cover.is_moving)
+        self.assertTrue(await self.mgr.cover.check_for_idle())
+        self.assertTrue(task.done())
         await task
 
     async def test6(self):
