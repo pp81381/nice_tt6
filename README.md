@@ -264,6 +264,8 @@ Method|Description
 
 A sensor class that can be used to monitor the position of a cover.  Could be used to monitor a retractable projector screen or a garage door.  Designed for use with Home Assistant.
 
+Cover is an `AsyncObservable` and will notify any attached objects of type `AsyncObserver` if the `drop_pct` is changed
+
 Constructor parameters:
 
 Parameter|Description
@@ -283,7 +285,7 @@ Has the following properties and methods:
 
 Property|Description
 --|--
-`Cover.drop_pct`|get or set the percentage drop (0.0 = fully open/down, 1.0 = fully closed/up)
+`Cover.drop_pct`|the percentage drop (0.0 = fully open/down, 1.0 = fully closed/up)
 `Cover.drop`|drop in metres
 `Cover.is_moving`|returns True if the cover has moved recently
 `Cover.is_closed`|returns True if the cover is fully up (opposite of a blind)
@@ -293,6 +295,7 @@ Property|Description
 
 Method|Description
 --|--
+`Cover.set_drop_pct`|set the percentage drop (0.0 = fully open/down, 1.0 = fully closed/up) - async
 `Cover.moved()`|called to indicate movement<br>When initiating movement, call `moved()` so that `is_moving` will be meaningful before the first POD message comes back from the cover
 
 
