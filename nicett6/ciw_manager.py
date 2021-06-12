@@ -84,7 +84,7 @@ class CIWManager:
             if isinstance(msg, PctPosResponse):
                 target_cover = self._get_target_cover(msg.tt_addr)
                 if target_cover is not None:
-                    target_cover.drop_pct = msg.pct_pos / 1000.0
+                    await target_cover.set_drop_pct(msg.pct_pos / 1000.0)
                     _LOGGER.debug(
                         f"aspect_ratio: {self.helper.aspect_ratio}; "
                         f"screen_drop: {self.helper.screen.drop}; "

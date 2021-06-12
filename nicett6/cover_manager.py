@@ -56,7 +56,7 @@ class CoverManager:
         async for msg in self._message_tracker_reader:
             if isinstance(msg, PctPosResponse):
                 if msg.tt_addr == self._cover_writer.tt_addr:
-                    self.cover.drop_pct = msg.pct_pos / 1000.0
+                    await self.cover.set_drop_pct(msg.pct_pos / 1000.0)
 
     async def wait_for_motion_to_complete(self):
         """

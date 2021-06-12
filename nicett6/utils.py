@@ -78,26 +78,6 @@ class AsyncObservable:
             await o.update(self)
 
 
-class Observer:
-    def update(self, observable: "Observable") -> None:
-        pass
-
-
-class Observable:
-    def __init__(self) -> None:
-        self.observers: Set[Observer] = set()
-
-    def attach(self, observer: Observer) -> None:
-        self.observers.add(observer)
-
-    def detach(self, observer: Observer) -> None:
-        self.observers.remove(observer)
-
-    def notify_observers(self) -> None:
-        for o in self.observers:
-            o.update(self)
-
-
 def check_pct(name: str, pct: float):
     if pct < 0.0 - PCT_ABS_TOL or pct > 1.0 + PCT_ABS_TOL:
         raise ValueError(f"{name} percentage ({pct}) out of range")

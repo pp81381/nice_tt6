@@ -1,13 +1,13 @@
 import logging
 from nicett6.ttbus_device import TTBusDeviceAddress
 from nicett6.connection import TT6Writer
-from nicett6.utils import Observable, check_pct
+from nicett6.utils import AsyncObservable, check_pct
 import time
 
 _LOGGER = logging.getLogger(__name__)
 
 
-class Cover(Observable):
+class Cover(AsyncObservable):
     MOVEMENT_THRESHOLD_INTERVAL = 2.0
     IS_CLOSED_PCT = 0.95
 
@@ -30,14 +30,13 @@ class Cover(Observable):
     def drop_pct(self):
         return self._drop_pct
 
-    @drop_pct.setter
-    def drop_pct(self, value):
+    async def set_drop_pct(self, value):
         """Drop as a percentage (0.0 fully down to 1.0 fully up)"""
         prev_drop_pct = self._drop_pct  # Preserve state in case of exception
         self._drop_pct = check_pct(f"{self.name} drop", value)
         self._prev_drop_pct = prev_drop_pct
         self.moved()
-        self.notify_observers()
+        await self.notify_observers()
 
     @property
     def drop(self):

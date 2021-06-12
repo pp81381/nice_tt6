@@ -1,44 +1,43 @@
 from nicett6.ttbus_device import TTBusDeviceAddress
 from unittest import IsolatedAsyncioTestCase
 from nicett6.cover import Cover, TT6CoverWriter
-from unittest import TestCase
 from unittest.mock import AsyncMock
 import time
 
 
-class TestCover(TestCase):
+class TestCover(IsolatedAsyncioTestCase):
     def setUp(self):
         self.cover = Cover("Test", 0.8)
 
     def tearDown(self) -> None:
         self.cover = None
 
-    def test1(self):
+    async def test1(self):
         self.assertAlmostEqual(self.cover.drop_pct, 1.0)
         self.assertAlmostEqual(self.cover.drop, 0)
 
-    def test2(self):
-        self.cover.drop_pct = 0.0
+    async def test2(self):
+        await self.cover.set_drop_pct(0.0)
         self.assertAlmostEqual(self.cover.drop, 0.8)
 
-    def test3(self):
-        self.cover.drop_pct = 0.5
+    async def test3(self):
+        await self.cover.set_drop_pct(0.5)
         self.assertAlmostEqual(self.cover.drop, 0.4)
 
-    def test4(self):
+    async def test4(self):
         with self.assertRaises(ValueError):
-            self.cover.drop_pct = -0.1
+            await self.cover.set_drop_pct(-0.1)
 
-    def test5(self):
+    async def test5(self):
         with self.assertRaises(ValueError):
-            self.cover.drop_pct = 1.1
+            await self.cover.set_drop_pct(1.1)
 
-    def test6(self):
+    async def test6(self):
         self.assertEqual(self.cover.is_moving, False)
         self.assertEqual(self.cover.is_closed, True)
 
-    def test7(self):
-        self.cover.drop_pct = 0.5
+    async def test7(self):
+        await self.cover.set_drop_pct(0.5)
         self.assertEqual(self.cover.is_closed, False)
         self.assertEqual(self.cover.is_moving, True)
         self.assertEqual(self.cover.is_opening, True)
@@ -48,11 +47,11 @@ class TestCover(TestCase):
         self.assertEqual(self.cover.is_moving, False)
         self.assertEqual(self.cover.is_opening, False)
         self.assertEqual(self.cover.is_closing, False)
-        self.cover.drop_pct = 0.5
+        await self.cover.set_drop_pct(0.5)
         # Not really a movement but we don't know whether
         # it's the first of a sequence of pos messages
         self.assertEqual(self.cover.is_moving, True)
-        self.cover.drop_pct = 1.0
+        await self.cover.set_drop_pct(1.0)
         self.assertEqual(self.cover.is_closed, False)
         self.assertEqual(self.cover.is_moving, True)
         self.assertEqual(self.cover.is_opening, False)
@@ -63,7 +62,7 @@ class TestCover(TestCase):
         self.assertEqual(self.cover.is_opening, False)
         self.assertEqual(self.cover.is_closing, False)
 
-    def test8(self):
+    async def test8(self):
         """Emulate a sequence of movement messages coming in"""
 
         tests = [
@@ -110,7 +109,7 @@ class TestCover(TestCase):
         ) in tests:
             with self.subTest(name):
                 if drop_pct_to_set is not None:
-                    self.cover.drop_pct = drop_pct_to_set
+                    await self.cover.set_drop_pct(drop_pct_to_set)
                 time.sleep(sleep_before_check)
                 self.assertAlmostEqual(self.cover.drop_pct, drop_pct)
                 self.assertEqual(self.cover.is_closed, is_closed)
