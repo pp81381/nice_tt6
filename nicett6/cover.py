@@ -8,6 +8,8 @@ _LOGGER = logging.getLogger(__name__)
 
 
 class Cover(AsyncObservable):
+    """A sensor class that can be used to monitor the position of a cover"""
+
     MOVEMENT_THRESHOLD_INTERVAL = 2.0
     IS_CLOSED_PCT = 0.95
 
@@ -85,7 +87,9 @@ class Cover(AsyncObservable):
         return self.is_moving and self._drop_pct < self._prev_drop_pct
 
 
-class TT6CoverWriter:
+class TT6Cover:
+    """Class that sends commands to a `Cover` that is connected to the TTBus"""
+
     def __init__(self, tt_addr, cover, writer):
         self.tt_addr: TTBusDeviceAddress = tt_addr
         self.cover: Cover = cover

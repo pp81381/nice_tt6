@@ -27,10 +27,10 @@ async def example(serial_port):
         message_tracker_task = asyncio.create_task(mgr.message_tracker())
         logger_task = asyncio.create_task(log_cover_state(mgr.cover))
 
-        await mgr.send_drop_pct_command(0.9)
+        await mgr.tt6_cover.send_drop_pct_command(0.9)
         await mgr.wait_for_motion_to_complete()
 
-        await mgr.send_close_command()
+        await mgr.tt6_cover.send_close_command()
         await mgr.wait_for_motion_to_complete()
 
         logger_task.cancel()

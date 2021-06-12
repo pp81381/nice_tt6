@@ -192,9 +192,9 @@ A set of components to provide a high level interface to manage a Cover.    Coul
 
 Component|Description
 --|--
-`CoverManager`|A class that manages the controller connection, a `Cover` and a `TT6CoverWriter` to control a Cover<br>Can be used as an async context manager
+`CoverManager`|A class that manages the controller connection, a `Cover` and a `TT6Cover` to control a Cover<br>Can be used as an async context manager
 `Cover`|A sensor class that can be used to monitor the position of a cover
-`TT6CoverWriter`|Writer class to be used in conjunction with a `Cover` that ensures that movement is properly tracked
+`TT6Cover`|Class that sends commands to a `Cover` that is connected to the TTBus
 
 <br>Example (also see [example3.py](#Examples) below):
 
@@ -232,7 +232,7 @@ async def example(serial_port):
 
 ## CoverManager
 
-A class that manages a connection, a `Cover` and a `TT6CoverWriter` to control a Cover
+A class that manages the connection and a cover
 
 Can be used as an async context manager
 
@@ -247,16 +247,11 @@ Parameter|Description
 Property|Description
 --|--
 `CoverManager.cover`|The cover being managed
+`CoverManager.tt6_cover`|The `TT6Cover` through which the cover can be controlled
 
 Method|Description
 --|--
 `CoverManager.message_tracker()`|A coroutine that must be running in the background for the manager to be able to track cover positions
-`CoverManager.send_pos_request()`|Send a POS request to the controller
-`CoverManager.send_drop_pct_command(drop_pct)`|Send a POS command to the controller to set the drop percentage of the Cover to `drop_pct`<br>`drop_pct` must be between 0.0 (fully open/down) and 1.0 (fully closed/up)
-`CoverManager.send_close_command()`|Send a close command to the controller for the Cover
-`CoverManager.send_open_command()`|Send an open command to the controller for the Cover
-`CoverManager.send_preset_command(preset_num)`|Send an preset command to the controller for the Cover
-`CoverManager.send_stop_command()`|Send a stop command to the controller for the Cover
 `CoverManager.wait_for_motion_to_complete()`|Waits for motion to complete
 
 
@@ -299,26 +294,26 @@ Method|Description
 `Cover.moved()`|called to indicate movement<br>When initiating movement, call `moved()` so that `is_moving` will be meaningful before the first POD message comes back from the cover
 
 
-## TT6CoverWriter
+## TT6Cover
 
-Writer class to be used in conjunction with a `Cover` that ensures that movement is properly tracked
+Class that sends commands to a `Cover` that is connected to the TTBus
 
 Documented here for completeness but intended to be constructed and accessed via a `CoverManager` or `CIWManager`
 
 Property|Description
 --|--
-`TT6CoverWriter.tt_addr`|the TTBus address of the Cover
-`TT6CoverWriter.cover`|the `Cover` helper
-`TT6CoverWriter.writer`|the low level `TT6Writer`
+`TT6Cover.tt_addr`|the TTBus address of the Cover
+`TT6Cover.cover`|the `Cover` helper
+`TT6Cover.writer`|the low level `TT6Writer`
 
 Method|Description
 --|--
-`TT6CoverWriter.send_pos_request()`|Send a POS request to the controller
-`TT6CoverWriter.send_drop_pct_command(drop_pct)`|Send a POS command to the controller to set the drop percentage of the Cover to `drop_pct`<br>`drop_pct` must be between 0.0 (fully open/down) and 1.0 (fully closed/up)
-`TT6CoverWriter.send_close_command()`|Send a close command to the controller for the Cover
-`TT6CoverWriter.send_open_command()`|Send an open command to the controller for the Cover
-`TT6CoverWriter.send_preset_command(preset_num)`|Send an preset command to the controller for the Cover
-`TT6CoverWriter.send_stop_command()`|Send a stop command to the controller for the Cover
+`TT6Cover.send_pos_request()`|Send a POS request to the controller
+`TT6Cover.send_drop_pct_command(drop_pct)`|Send a POS command to the controller to set the drop percentage of the Cover to `drop_pct`<br>`drop_pct` must be between 0.0 (fully open/down) and 1.0 (fully closed/up)
+`TT6Cover.send_close_command()`|Send a close command to the controller for the Cover
+`TT6Cover.send_open_command()`|Send an open command to the controller for the Cover
+`TT6Cover.send_preset_command(preset_num)`|Send an preset command to the controller for the Cover
+`TT6Cover.send_stop_command()`|Send a stop command to the controller for the Cover
 
 
 
@@ -375,6 +370,8 @@ Parameter|Description
 Property|Description
 --|--
 `CIWManager.helper`|The `CIWHelper` sensor object containing the two `Cover` objects
+`CIWManager.screen_tt6_cover`|The `TT6Cover` through which the screen cover can be controlled
+`CIWManager.mask_tt6_cover`|The `TT6Cover` through which the mask cover can be controlled
 
 Method|Description
 --|--

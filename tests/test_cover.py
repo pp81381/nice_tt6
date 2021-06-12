@@ -1,6 +1,6 @@
 from nicett6.ttbus_device import TTBusDeviceAddress
 from unittest import IsolatedAsyncioTestCase
-from nicett6.cover import Cover, TT6CoverWriter
+from nicett6.cover import Cover, TT6Cover
 from unittest.mock import AsyncMock
 import time
 
@@ -123,7 +123,7 @@ class TestCoverWriter(IsolatedAsyncioTestCase):
         self.tt_addr = TTBusDeviceAddress(0x02, 0x04)
         self.cover = Cover("test", 2.0)
         self.writer = AsyncMock(name="writer")
-        self.cw = TT6CoverWriter(self.tt_addr, self.cover, self.writer)
+        self.cw = TT6Cover(self.tt_addr, self.cover, self.writer)
 
     async def test1(self):
         self.assertEqual(self.cover.is_moving, False)

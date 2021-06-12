@@ -83,22 +83,22 @@ class TestCoverManager(IsolatedAsyncioTestCase):
         self.mgr.helper.mask.moved()
 
     async def test6(self):
-        await self.mgr.send_drop_pct_command(0.5)
+        await self.mgr.tt6_cover.send_drop_pct_command(0.5)
         writer = self.conn.get_writer.return_value
         writer.send_web_move_command.assert_awaited_with(self.tt_addr, 0.5)
 
     async def test7(self):
-        await self.mgr.send_close_command()
+        await self.mgr.tt6_cover.send_close_command()
         writer = self.conn.get_writer.return_value
         writer.send_simple_command.assert_awaited_with(self.tt_addr, "MOVE_UP"),
 
     async def test8(self):
-        await self.mgr.send_open_command()
+        await self.mgr.tt6_cover.send_open_command()
         writer = self.conn.get_writer.return_value
         writer.send_simple_command.assert_awaited_with(self.tt_addr, "MOVE_DOWN"),
 
     async def test9(self):
-        await self.mgr.send_stop_command()
+        await self.mgr.tt6_cover.send_stop_command()
         writer = self.conn.get_writer.return_value
         writer.send_simple_command.assert_awaited_with(self.tt_addr, "STOP"),
 
@@ -122,7 +122,7 @@ class TestCoverManagerContextManager(IsolatedAsyncioTestCase):
             writer = self.conn.get_writer.return_value
             writer.send_web_on.assert_awaited_once()
             writer.send_web_pos_request.assert_awaited_with(self.tt_addr)
-            await mgr.send_open_command()
+            await mgr.tt6_cover.send_open_command()
             writer = self.conn.get_writer.return_value
             writer.send_simple_command.assert_awaited_with(self.tt_addr, "MOVE_DOWN"),
             self.conn.close.assert_not_called()
