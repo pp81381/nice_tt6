@@ -292,7 +292,8 @@ Method|Description
 --|--
 `Cover.set_drop_pct`|Set the percentage drop (0.0 = fully open/down, 1.0 = fully closed/up) - async<br>Will notify observers of the state change
 `Cover.moved()`|Called to indicate movement<br>When initiating movement, call `moved()` so that `is_moving` will be meaningful in the interval before the first POS message comes back from the cover<br>Will notify observers of the state change
-`Cover.check_for_idle()`|Called to check whether movement has ceased<br>Returns True if the cover is idle<br>Will notify observers of the state change if the cover became idle since the last call
+`Cover.idle()`|Called to indicate that the cover is idle<br>After detecting that the cover is idle, call `idle()` so that the next movement direction will be correctly inferred<br>Will notify observers of the state change
+`Cover.check_for_idle()`|Called to check whether movement has ceased<br>Returns True if the cover is idle<br>Will invoke Cover.idle() if the cover became idle since the last call
 
 
 ## TT6Cover
