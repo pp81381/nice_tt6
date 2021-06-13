@@ -130,6 +130,36 @@ class TestCover(IsolatedAsyncioTestCase):
             self.assertTrue(await self.cover.check_for_idle())
             p.assert_awaited_once()
 
+    async def test10(self):
+        self.assertTrue(self.cover.is_closed)
+        self.assertFalse(self.cover.is_moving)
+        self.assertFalse(self.cover.is_opening)
+        self.assertFalse(self.cover.is_closing)
+        await self.cover.set_drop_pct(0.8)
+        self.assertAlmostEqual(self.cover._prev_drop_pct, 1.0)
+        self.assertFalse(self.cover.is_closed)
+        self.assertTrue(self.cover.is_moving)
+        self.assertTrue(self.cover.is_opening)
+        self.assertFalse(self.cover.is_closing)
+        await asyncio.sleep(self.cover.MOVEMENT_THRESHOLD_INTERVAL + 0.1)
+        self.assertAlmostEqual(self.cover._prev_drop_pct, 1.0)  #!!
+        self.assertFalse(self.cover.is_closed)
+        self.assertFalse(self.cover.is_moving)
+        self.assertFalse(self.cover.is_opening)
+        self.assertFalse(self.cover.is_closing)
+        await self.cover.idle()
+        self.assertAlmostEqual(self.cover._prev_drop_pct, 0.8)  # !!
+        self.assertFalse(self.cover.is_closed)
+        self.assertFalse(self.cover.is_moving)
+        self.assertFalse(self.cover.is_opening)
+        self.assertFalse(self.cover.is_closing)
+        await self.cover.moved()  # We are moving but we don't know the direction yet
+        self.assertAlmostEqual(self.cover._prev_drop_pct, 0.8)
+        self.assertFalse(self.cover.is_closed)
+        self.assertTrue(self.cover.is_moving)
+        self.assertFalse(self.cover.is_opening)
+        self.assertFalse(self.cover.is_closing)
+
 
 class TestCoverWriter(IsolatedAsyncioTestCase):
     def setUp(self):

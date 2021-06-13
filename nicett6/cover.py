@@ -49,13 +49,18 @@ class Cover(AsyncObservable):
         self._prev_movement = time.perf_counter()
         await self.notify_observers()
 
+    async def idle(self):
+        """Called to indicate that movement has finished"""
+        self._prev_drop_pct = self._drop_pct
+        await self.notify_observers()
+
     async def check_for_idle(self):
         """Used to notify observers that movement has completed"""
         if self.is_moving:
             self._was_moving = True
         elif self._was_moving:
             self._was_moving = False
-            await self.notify_observers()
+            await self.idle()
         return not self._was_moving
 
     @property
