@@ -192,7 +192,7 @@ A set of components to provide a high level interface to manage a Cover.    Coul
 
 Component|Description
 --|--
-`CoverManager`|A class that manages the controller connection, a `Cover` and a `TT6Cover` to control a Cover<br>Can be used as an async context manager
+`CoverManager`|A class that manages the controller connection and a set of covers<br>Can be used as an async context manager
 `Cover`|A sensor class that can be used to monitor the position of a cover
 `TT6Cover`|Class that sends commands to a `Cover` that is connected to the TTBus
 
@@ -214,14 +214,16 @@ async def log_cover_state(cover):
 async def example(serial_port):
     tt_addr = TTBusDeviceAddress(0x02, 0x04)
     max_drop = 2.0
-    async with CoverManager(serial_port, tt_addr, max_drop) as mgr:
-        message_tracker_task = asyncio.create_task(mgr.message_tracker())
-        logger_task = asyncio.create_task(log_cover_state(mgr.cover))
+    async with CoverManager(serial_port) as mgr:
+        tt6_cover = await mgr.add_cover(tt_addr, Cover("Cover", max_drop))
 
-        await mgr.send_drop_pct_command(0.9)
+        message_tracker_task = asyncio.create_task(mgr.message_tracker())
+        logger_task = asyncio.create_task(log_cover_state(tt6_cover.cover))
+
+        await tt6_cover.send_drop_pct_command(0.9)
         await mgr.wait_for_motion_to_complete()
 
-        await mgr.send_close_command()
+        await tt6_cover.send_close_command()
         await mgr.wait_for_motion_to_complete()
 
         logger_task.cancel()
@@ -232,7 +234,7 @@ async def example(serial_port):
 
 ## CoverManager
 
-A class that manages the connection and a cover
+A class that manages the connection and a set of covers
 
 Can be used as an async context manager
 
@@ -241,16 +243,12 @@ Constructor parameters:
 Parameter|Description
 --|--
 `serial_port`|The serial port to use.  See [Opening a connection](#opening-a-connection) for the valid values.
-`tt_addr`|the TTBus address of the Cover
-`max_drop`|max drop of the Cover in metres
-
-Property|Description
---|--
-`CoverManager.cover`|The cover being managed
-`CoverManager.tt6_cover`|The `TT6Cover` through which the cover can be controlled
 
 Method|Description
 --|--
+`CoverManager.open()`|Open the connection<br>Called automatically if the object is used as a context manager
+`CoverManager.close()`|Close the connection<br>Called automatically if the object is used as a context manager
+`CoverManager.add_cover(tt_addr, cover)`|Add a cover to be managed<br>tt_addr is the TTBus address of the cover<br>The connection must be open so that the initial position can be requested
 `CoverManager.message_tracker()`|A coroutine that must be running in the background for the manager to be able to track cover positions
 `CoverManager.wait_for_motion_to_complete()`|Waits for motion to complete<br>Has side effect of notifying observers of the cover when it goes idle
 
@@ -377,6 +375,8 @@ Property|Description
 
 Method|Description
 --|--
+`CIWManager.open()`|Open the connection<br>Called automatically if the object is used as a context manager
+`CIWManager.close()`|Close the connection<br>Called automatically if the object is used as a context manager
 `CIWManager.message_tracker()`|A coroutine that must be running in the background for the manager to be able to track cover positions
 `CIWManager.send_pos_request()`|Send POS requests to the controller for the screen and mask
 `CIWManager.send_close_command()`|Send a close command to the controller for the screen and mask

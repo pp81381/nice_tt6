@@ -1,9 +1,8 @@
 import asyncio
-from nicett6.connection import TT6Connection
 from nicett6.ciw_helper import CIWAspectRatioMode, ImageDef
 from nicett6.decode import PctPosResponse
 from nicett6.ciw_manager import CIWManager
-from nicett6.cover import Cover
+from nicett6.cover import Cover, POLLING_INTERVAL
 from nicett6.ttbus_device import TTBusDeviceAddress
 from nicett6.utils import run_coro_after_delay
 from unittest import IsolatedAsyncioTestCase
@@ -34,7 +33,7 @@ class TestCIWManager(IsolatedAsyncioTestCase):
     def setUp(self):
         self.conn = make_mock_conn()
         patcher = patch(
-            "nicett6.ciw_manager.TT6Connection",
+            "nicett6.cover_manager.TT6Connection",
             return_value=self.conn,
         )
         self.addCleanup(patcher.stop)
@@ -73,7 +72,7 @@ class TestCIWManager(IsolatedAsyncioTestCase):
         task = asyncio.create_task(self.mgr.wait_for_motion_to_complete())
         self.addAsyncCleanup(cleanup_task, task)
         self.assertEqual(task.done(), False)
-        await asyncio.sleep(CIWManager.POLLING_INTERVAL + 0.1)
+        await asyncio.sleep(POLLING_INTERVAL + 0.1)
         self.assertEqual(task.done(), True)
         await task
 
@@ -86,7 +85,7 @@ class TestCIWManager(IsolatedAsyncioTestCase):
         self.assertEqual(self.mgr.helper.mask.is_moving, False)
         self.assertEqual(task.done(), False)
 
-        await asyncio.sleep(CIWManager.POLLING_INTERVAL + 0.1)
+        await asyncio.sleep(POLLING_INTERVAL + 0.1)
 
         self.assertEqual(self.mgr.helper.screen.is_moving, True)
         self.assertEqual(self.mgr.helper.mask.is_moving, False)
@@ -102,9 +101,7 @@ class TestCIWManager(IsolatedAsyncioTestCase):
     async def test5(self):
         await self.mgr.helper.screen.moved()
         asyncio.create_task(
-            run_coro_after_delay(
-                self.mgr.helper.mask.moved(), CIWManager.POLLING_INTERVAL + 0.2
-            )
+            run_coro_after_delay(self.mgr.helper.mask.moved(), POLLING_INTERVAL + 0.2)
         )
         task = asyncio.create_task(self.mgr.wait_for_motion_to_complete())
         self.addAsyncCleanup(cleanup_task, task)
@@ -113,7 +110,7 @@ class TestCIWManager(IsolatedAsyncioTestCase):
         self.assertEqual(self.mgr.helper.mask.is_moving, False)
         self.assertEqual(task.done(), False)
 
-        await asyncio.sleep(CIWManager.POLLING_INTERVAL + 0.1)
+        await asyncio.sleep(POLLING_INTERVAL + 0.1)
 
         self.assertEqual(self.mgr.helper.screen.is_moving, True)
         self.assertEqual(self.mgr.helper.mask.is_moving, False)
@@ -188,7 +185,7 @@ class TestCIWManagerContextManager(IsolatedAsyncioTestCase):
     def setUp(self):
         self.conn = make_mock_conn()
         patcher = patch(
-            "nicett6.ciw_manager.TT6Connection",
+            "nicett6.cover_manager.TT6Connection",
             return_value=self.conn,
         )
         self.addCleanup(patcher.stop)

@@ -1,6 +1,7 @@
 import argparse
 import asyncio
 import logging
+from nicett6.cover import Cover
 from nicett6.cover_manager import CoverManager
 from nicett6.ttbus_device import TTBusDeviceAddress
 
@@ -23,14 +24,16 @@ async def log_cover_state(cover):
 async def example(serial_port):
     tt_addr = TTBusDeviceAddress(0x02, 0x04)
     max_drop = 2.0
-    async with CoverManager(serial_port, tt_addr, max_drop) as mgr:
-        message_tracker_task = asyncio.create_task(mgr.message_tracker())
-        logger_task = asyncio.create_task(log_cover_state(mgr.cover))
+    async with CoverManager(serial_port) as mgr:
+        tt6_cover = await mgr.add_cover(tt_addr, Cover("Cover", max_drop))
 
-        await mgr.tt6_cover.send_drop_pct_command(0.9)
+        message_tracker_task = asyncio.create_task(mgr.message_tracker())
+        logger_task = asyncio.create_task(log_cover_state(tt6_cover.cover))
+
+        await tt6_cover.send_drop_pct_command(0.9)
         await mgr.wait_for_motion_to_complete()
 
-        await mgr.tt6_cover.send_close_command()
+        await tt6_cover.send_close_command()
         await mgr.wait_for_motion_to_complete()
 
         logger_task.cancel()

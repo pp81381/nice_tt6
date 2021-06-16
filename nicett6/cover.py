@@ -1,3 +1,4 @@
+import asyncio
 import logging
 from nicett6.ttbus_device import TTBusDeviceAddress
 from nicett6.connection import TT6Writer
@@ -5,6 +6,8 @@ from nicett6.utils import AsyncObservable, check_pct
 import time
 
 _LOGGER = logging.getLogger(__name__)
+
+POLLING_INTERVAL = 0.2
 
 
 class Cover(AsyncObservable):
@@ -140,3 +143,17 @@ class TT6Cover:
         _LOGGER.debug(f"sending STOP to {self.cover.name}")
         await self.writer.send_simple_command(self.tt_addr, "STOP")
         await self.cover.moved()
+
+
+async def wait_for_motion_to_complete(covers):
+    """
+    Poll for motion to complete
+
+    Make sure that Cover.moving() is called when movement
+    is initiated for this method to work reliably (see CoverWriter)
+    Has the side effect of notifying observers of the idle state
+    """
+    while True:
+        await asyncio.sleep(POLLING_INTERVAL)
+        if all([await cover.check_for_idle() for cover in covers]):
+            return

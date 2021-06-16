@@ -1,7 +1,8 @@
+from contextlib import contextmanager
 from enum import Enum
 import logging
 import math
-from nicett6.utils import check_pct
+from nicett6.utils import AsyncObserver, check_pct
 from nicett6.cover import Cover
 
 
@@ -226,3 +227,37 @@ def _calculate_drops_fixed_middle(
         middle_of_image + new_image_height / 2.0 + bottom_border_height,
         middle_of_image - new_image_height / 2.0,
     )
+
+
+@contextmanager
+def ciw_position_logger(helper: CIWHelper, loglevel: int = logging.DEBUG):
+    logger = CIWPositionLogger(helper, loglevel)
+    try:
+        logger.start_logging()
+        yield logger
+    finally:
+        logger.stop_logging()
+
+
+class CIWPositionLogger(AsyncObserver):
+    def __init__(self, helper: CIWHelper, loglevel: int = logging.DEBUG):
+        super().__init__()
+        self.helper = helper
+        self.loglevel = loglevel
+
+    def start_logging(self):
+        self.helper.screen.attach(self)
+        self.helper.mask.attach(self)
+
+    def stop_logging(self):
+        self.helper.screen.detach(self)
+        self.helper.mask.detach(self)
+
+    async def update(self, observable):
+        _LOGGER.log(
+            self.loglevel,
+            f"cover: {observable.name}; "
+            f"aspect_ratio: {self.helper.aspect_ratio}; "
+            f"screen_drop: {self.helper.screen.drop}; "
+            f"mask_drop: {self.helper.mask.drop}",
+        )

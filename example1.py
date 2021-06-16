@@ -1,6 +1,6 @@
 import asyncio
 import logging
-from nicett6.ciw_helper import CIWAspectRatioMode, ImageDef
+from nicett6.ciw_helper import CIWAspectRatioMode, ImageDef, ciw_position_logger
 from nicett6.ciw_manager import CIWManager
 from nicett6.ttbus_device import TTBusDeviceAddress
 from nicett6.utils import run_coro_after_delay, parse_example_args
@@ -51,14 +51,17 @@ async def main(serial_port, example):
         0.6,
         ImageDef(0.05, 1.57, 16 / 9),
     ) as mgr:
-        reader_task = asyncio.create_task(mgr.message_tracker())
-        example_task = asyncio.create_task(example(mgr))
-        writer = mgr._conn.get_writer()
-        request_task = asyncio.create_task(
-            run_coro_after_delay(request_screen_position(writer, mgr._screen_tt_addr))
-        )
-        await example_task
-        await request_task
+        with ciw_position_logger(mgr.helper, logging.INFO):
+            reader_task = asyncio.create_task(mgr.message_tracker())
+            example_task = asyncio.create_task(example(mgr))
+            writer = mgr._mgr._conn.get_writer()
+            request_task = asyncio.create_task(
+                run_coro_after_delay(
+                    request_screen_position(writer, mgr._screen_tt_addr)
+                )
+            )
+            await example_task
+            await request_task
     await reader_task
 
 
