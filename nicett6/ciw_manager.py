@@ -26,7 +26,7 @@ class CIWManager:
         return self
 
     async def __aexit__(self, exception_type, exception_value, traceback):
-        self.close()
+        await self.close()
 
     async def open(self):
         await self._mgr.open()
@@ -39,8 +39,8 @@ class CIWManager:
             self.helper.mask,
         )
 
-    def close(self):
-        self._mgr.close()
+    async def close(self):
+        await self._mgr.close()
         self.screen_tt6_cover = None
         self.mask_tt6_cover = None
 

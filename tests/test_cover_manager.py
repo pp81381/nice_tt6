@@ -123,6 +123,46 @@ class TestCoverManager(IsolatedAsyncioTestCase):
         writer = self.conn.get_writer.return_value
         writer.send_simple_command.assert_awaited_with(self.tt_addr, "STOP"),
 
+    async def test10(self):
+        """Test the notifier"""
+        self.assertTrue(self.cover.is_closed)
+        self.assertFalse(self.cover.is_moving)
+        self.assertFalse(self.cover.is_opening)
+        self.assertFalse(self.cover.is_closing)
+        self.assertIsNone(self.tt6_cover._notifier._task)
+        await self.cover.set_drop_pct(0.8)
+        self.assertAlmostEqual(self.cover._prev_drop_pct, 1.0)
+        self.assertFalse(self.cover.is_closed)
+        self.assertTrue(self.cover.is_moving)
+        self.assertTrue(self.cover.is_opening)
+        self.assertFalse(self.cover.is_closing)
+        self.assertIsNotNone(self.tt6_cover._notifier._task)
+        self.assertFalse(self.tt6_cover._notifier._task.done())
+        await asyncio.sleep(self.cover.MOVEMENT_THRESHOLD_INTERVAL + 0.01)
+        self.assertAlmostEqual(self.cover._prev_drop_pct, 1.0)  #!!
+        self.assertFalse(self.cover.is_closed)
+        self.assertFalse(self.cover.is_moving)
+        self.assertFalse(self.cover.is_opening)
+        self.assertFalse(self.cover.is_closing)
+        self.assertIsNotNone(self.tt6_cover._notifier._task)
+        self.assertFalse(self.tt6_cover._notifier._task.done())
+        await asyncio.sleep(
+            self.tt6_cover._notifier.POST_MOVEMENT_ALLOWANCE
+        )  # Wait for notifier
+        self.assertAlmostEqual(self.cover._prev_drop_pct, 0.8)  # !!
+        self.assertFalse(self.cover.is_closed)
+        self.assertFalse(self.cover.is_moving)
+        self.assertFalse(self.cover.is_opening)
+        self.assertFalse(self.cover.is_closing)
+        self.assertIsNotNone(self.tt6_cover._notifier._task)
+        self.assertTrue(self.tt6_cover._notifier._task.done())
+        await self.cover.moved()  # We are moving but we don't know the direction yet
+        self.assertAlmostEqual(self.cover._prev_drop_pct, 0.8)
+        self.assertFalse(self.cover.is_closed)
+        self.assertTrue(self.cover.is_moving)
+        self.assertFalse(self.cover.is_opening)
+        self.assertFalse(self.cover.is_closing)
+
 
 class TestCoverManagerContextManager(IsolatedAsyncioTestCase):
     def setUp(self):

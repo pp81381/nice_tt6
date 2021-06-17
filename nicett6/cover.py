@@ -2,7 +2,7 @@ import asyncio
 import logging
 from nicett6.ttbus_device import TTBusDeviceAddress
 from nicett6.connection import TT6Writer
-from nicett6.utils import AsyncObservable, check_pct
+from nicett6.utils import AsyncObservable, AsyncObserver, check_pct
 import time
 
 _LOGGER = logging.getLogger(__name__)
@@ -30,6 +30,20 @@ class Cover(AsyncObservable):
             f"Cover: {self.name}, {self.max_drop}, "
             f"{self._drop_pct}, {self._prev_drop_pct}, "
             f"{self._prev_movement}"
+        )
+
+    def log(self, msg, loglevel=logging.DEBUG):
+        _LOGGER.log(
+            loglevel,
+            f"{msg}; "
+            f"name: {self.name}; "
+            f"max_drop: {self.max_drop}; "
+            f"drop_pct: {self.drop_pct}; "
+            f"_prev_drop_pct: {self._prev_drop_pct}"
+            f"is_moving: {self.is_moving}; "
+            f"is_opening: {self.is_opening}; "
+            f"is_closing: {self.is_closing}; "
+            f"is_closed: {self.is_closed}; ",
         )
 
     @property
@@ -112,6 +126,14 @@ class TT6Cover:
         self.tt_addr: TTBusDeviceAddress = tt_addr
         self.cover: Cover = cover
         self.writer: TT6Writer = writer
+        self._notifier = PostMovementNotifier()
+
+    def enable_notifier(self):
+        self.cover.attach(self._notifier)
+
+    async def disable_notifier(self):
+        self.cover.detach(self._notifier)
+        await self._notifier.cleanup()
 
     async def send_pos_request(self):
         await self.writer.send_web_pos_request(self.tt_addr)
@@ -157,3 +179,44 @@ async def wait_for_motion_to_complete(covers):
         await asyncio.sleep(POLLING_INTERVAL)
         if all([await cover.check_for_idle() for cover in covers]):
             return
+
+
+class PostMovementNotifier(AsyncObserver):
+    """Invokes notify_observers one last time after movement stops"""
+
+    POST_MOVEMENT_ALLOWANCE = 0.05
+
+    def __init__(self):
+        super().__init__()
+        self._task_lock = asyncio.Lock()
+        self._task = None
+
+    async def update(self, cover: Cover) -> None:
+        cover.log("PostMovementNotifier.update", logging.DEBUG)
+        if cover.is_moving:  # Avoid recursion
+            async with self._task_lock:
+                await self._cancel_task()
+                self._task = asyncio.create_task(self._set_idle_after_delay(cover))
+
+    async def _set_idle_after_delay(self, cover):
+        await asyncio.sleep(
+            cover.MOVEMENT_THRESHOLD_INTERVAL + self.POST_MOVEMENT_ALLOWANCE
+        )
+        await cover.idle()
+        cover.log("After _set_idle_after_delay", logging.DEBUG)
+
+    async def cleanup(self):
+        _LOGGER.debug(f"cleanup called")
+        async with self._task_lock:
+            await self._cancel_task()
+
+    async def _cancel_task(self):
+        """Cancel task - make sure you have acquired the lock first"""
+        if self._task is not None:
+            _LOGGER.debug(f"_cancel_task called with an active task")
+            self._task.cancel()
+            try:
+                await self._task
+            except asyncio.CancelledError:
+                pass
+            self._task = None

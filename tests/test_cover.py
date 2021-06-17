@@ -141,7 +141,7 @@ class TestCover(IsolatedAsyncioTestCase):
         self.assertTrue(self.cover.is_moving)
         self.assertTrue(self.cover.is_opening)
         self.assertFalse(self.cover.is_closing)
-        await asyncio.sleep(self.cover.MOVEMENT_THRESHOLD_INTERVAL + 0.1)
+        await asyncio.sleep(self.cover.MOVEMENT_THRESHOLD_INTERVAL + 0.01)
         self.assertAlmostEqual(self.cover._prev_drop_pct, 1.0)  #!!
         self.assertFalse(self.cover.is_closed)
         self.assertFalse(self.cover.is_moving)

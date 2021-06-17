@@ -195,6 +195,7 @@ Component|Description
 `CoverManager`|A class that manages the controller connection and a set of covers<br>Can be used as an async context manager
 `Cover`|A sensor class that can be used to monitor the position of a cover
 `TT6Cover`|Class that sends commands to a `Cover` that is connected to the TTBus
+`PostMovementNotifier`|Helper class that resets a cover to idle after movement has stopped
 
 <br>Example (also see [example3.py](#Examples) below):
 
@@ -298,7 +299,7 @@ Method|Description
 
 Class that sends commands to a `Cover` that is connected to the TTBus
 
-Documented here for completeness but intended to be constructed and accessed via a `CoverManager` or `CIWManager`
+Intended to be constructed by `CoverManager.add_cover()`
 
 Property|Description
 --|--
@@ -315,6 +316,17 @@ Method|Description
 `TT6Cover.send_preset_command(preset_num)`|Send an preset command to the controller for the Cover
 `TT6Cover.send_stop_command()`|Send a stop command to the controller for the Cover
 
+## PostMovementNotifier
+
+Helper class that resets a cover to idle after movement has stopped
+
+Documented here for completeness but intended to be constructed by and internal to the `CoverManager`
+
+Most state changes of a `Cover` will be triggered by the receipt of a POS message.  The `Cover` infers that there is movement when a message is received and infers the direction from the current and previous message.   However, there is no notification that the `Cover` is idle so the `PostMovementNotifier` class detects that there has been no movement for a period and then calls `Cover.idle()`.  The `Cover` will then notify its observers that it is idle.
+
+The class implements the `AsyncObserver` interface and is intended to be attached to a `Cover`.  Whenever the `Cover` moves it calls `notifyObservers()` which calls `PostMovementNotifier.update()`.  A task is created that will wait for a period and then set the `Cover` to idle.   If a task was already running when the movement notification is received then the task will be cancelled and restarted.
+
+The task must sleep for `Cover.MOVEMENT_THRESHOLD_INTERVAL + PostMovementNotifier.POST_MOVEMENT_ALLOWANCE` seconds without being cancelled for the `Cover` to be considered idle.
 
 
 # High level CIW API

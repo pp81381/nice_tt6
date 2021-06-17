@@ -19,7 +19,7 @@ class CoverManager:
         return self
 
     async def __aexit__(self, exception_type, exception_value, traceback):
-        self.close()
+        await self.close()
 
     async def open(self):
         self._conn = TT6Connection()
@@ -30,12 +30,12 @@ class CoverManager:
         self._writer = self._conn.get_writer()
         await self._writer.send_web_on()
 
-    def close(self):
+    async def close(self):
         self._conn.close()
         self._conn = None
         self._message_tracker_reader = None
         self._writer = None
-        self._tt6_covers = {}
+        await self.remove_covers()
 
     async def message_tracker(self):
         _LOGGER.debug("message_tracker started")
@@ -50,8 +50,14 @@ class CoverManager:
     async def add_cover(self, tt_addr: TTBusDeviceAddress, cover: Cover):
         tt6_cover = TT6Cover(tt_addr, cover, self._writer)
         await tt6_cover.send_pos_request()
+        tt6_cover.enable_notifier()
         self._tt6_covers[tt_addr] = tt6_cover
         return tt6_cover
+
+    async def remove_covers(self):
+        for tt6_cover in self._tt6_covers.values():
+            await tt6_cover.disable_notifier()
+        self._tt6_covers = {}
 
     async def wait_for_motion_to_complete(self):
         return await wait_for_motion_to_complete(
