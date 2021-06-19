@@ -192,28 +192,30 @@ class PostMovementNotifier(AsyncObserver):
         self._task = None
 
     async def update(self, cover: Cover) -> None:
-        cover.log("PostMovementNotifier.update", logging.DEBUG)
         if cover.is_moving:  # Avoid recursion
             async with self._task_lock:
                 await self._cancel_task()
                 self._task = asyncio.create_task(self._set_idle_after_delay(cover))
+                cover.log("PostMovementNotifier task started", logging.DEBUG)
 
     async def _set_idle_after_delay(self, cover):
         await asyncio.sleep(
             cover.MOVEMENT_THRESHOLD_INTERVAL + self.POST_MOVEMENT_ALLOWANCE
         )
         await cover.idle()
-        cover.log("After _set_idle_after_delay", logging.DEBUG)
+        cover.log("PostMovementNotifier sent idle", logging.DEBUG)
 
     async def cleanup(self):
-        _LOGGER.debug(f"cleanup called")
+        _LOGGER.debug(f"PostMovementNotifier cleanup")
         async with self._task_lock:
             await self._cancel_task()
 
     async def _cancel_task(self):
         """Cancel task - make sure you have acquired the lock first"""
         if self._task is not None:
-            _LOGGER.debug(f"_cancel_task called with an active task")
+            _LOGGER.debug(
+                f"PostMovementNotifier _cancel_task called with an active task"
+            )
             self._task.cancel()
             try:
                 await self._task
