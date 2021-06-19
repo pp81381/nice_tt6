@@ -39,7 +39,7 @@ class Cover(AsyncObservable):
             f"name: {self.name}; "
             f"max_drop: {self.max_drop}; "
             f"drop_pct: {self.drop_pct}; "
-            f"_prev_drop_pct: {self._prev_drop_pct}"
+            f"_prev_drop_pct: {self._prev_drop_pct}; "
             f"is_moving: {self.is_moving}; "
             f"is_opening: {self.is_opening}; "
             f"is_closing: {self.is_closing}; "
