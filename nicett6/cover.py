@@ -213,12 +213,13 @@ class PostMovementNotifier(AsyncObserver):
     async def _cancel_task(self):
         """Cancel task - make sure you have acquired the lock first"""
         if self._task is not None:
-            _LOGGER.debug(
-                f"PostMovementNotifier _cancel_task called with an active task"
-            )
-            self._task.cancel()
-            try:
-                await self._task
-            except asyncio.CancelledError:
-                pass
-            self._task = None
+            if not self._task.done():
+                _LOGGER.debug(
+                    f"PostMovementNotifier _cancel_task called with an active task"
+                )
+                self._task.cancel()
+                try:
+                    await self._task
+                except asyncio.CancelledError:
+                    pass
+                self._task = None
