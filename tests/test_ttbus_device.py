@@ -7,6 +7,7 @@ class TestDevice(unittest.TestCase):
         tt_addr = TTBusDeviceAddress(0x02, 0x04)
         self.assertEqual(str(tt_addr), "TTBusDeviceAddress(0x02, 0x04)")
         self.assertEqual(f"{tt_addr}", "TTBusDeviceAddress(0x02, 0x04)")
+        self.assertEqual(tt_addr.id, "02_04")
 
     def test2(self):
         tt_addr1 = TTBusDeviceAddress(0x02, 0x04)

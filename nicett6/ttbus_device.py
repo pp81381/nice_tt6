@@ -4,6 +4,10 @@ class TTBusDeviceAddress:
         self.node = node
 
     @property
+    def id(self):
+        return f"{self.address:02X}_{self.node:02X}"
+
+    @property
     def as_tuple(self):
         return self.address, self.node
 
