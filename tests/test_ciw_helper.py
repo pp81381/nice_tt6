@@ -26,7 +26,7 @@ class TestImageDef(TestCase):
 class TestCIW(IsolatedAsyncioTestCase):
     def setUp(self):
         image_def = ImageDef(0.05, 1.8, 16 / 9)
-        self.helper = CIWHelper(2.0, 0.8, image_def)
+        self.helper = CIWHelper(Cover("Screen", 2.0), Cover("Mask", 0.8), image_def)
 
     def tearDown(self) -> None:
         self.helper = None

@@ -47,11 +47,9 @@ class ImageDef:
 class CIWHelper:
     """Helper class that represents the behaviour of a CIW screen with a mask"""
 
-    def __init__(
-        self, screen_max_drop: float, mask_max_drop: float, image_def: ImageDef
-    ):
-        self.screen = Cover("Screen", screen_max_drop)
-        self.mask = Cover("Mask", mask_max_drop)
+    def __init__(self, screen: Cover, mask: Cover, image_def: ImageDef):
+        self.screen = screen
+        self.mask = mask
         self.image_def = image_def
 
     @property

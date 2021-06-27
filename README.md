@@ -335,24 +335,28 @@ A high level API to manage a Constant Image Width retractable projector screen w
 
 Component|Description
 --|--
-`CIWManager`|A class that manages the controller connection, screen and mask<br>Can be used as an async context manager<br>Tracks movement of the covers<br>Provides writer methods to manage the screen and mask simultaneously
-`CIWHelper`|A sensor class that represents the positions of a screen and mask<br>Has properties to represent the visible image area<br>Provides methods to calculate the drops needed for a specific aspect ratio
+`CIWManager`|A class that manages a screen and mask simultaneously
+`CIWHelper`|A sensor class that tracks the positions of a screen and mask<br>Has properties to represent the visible image area<br>Provides methods to calculate the drops needed for a specific aspect ratio
 `ImageDef`|A class that describes where the image area is located on a cover that is a screen
 
 <br>Example (also see [example1.py](#Examples) below):
 
 ```python
 async def main(serial_port=None):
-    async with CIWManager(
-        serial_port,
-        TTBusDeviceAddress(0x02, 0x04),
-        TTBusDeviceAddress(0x03, 0x04),
-        1.77,
-        0.6,
-        ImageDef(0.05, 1.57, 16 / 9),
-    ) as mgr:
+    async with CoverManager(serial_port) as mgr:
+        screen_tt6_cover = await mgr.add_cover(
+            TTBusDeviceAddress(0x02, 0x04), Cover("Screen", 1.77)
+        )
+        mask_tt6_cover = await mgr.add_cover(
+            TTBusDeviceAddress(0x03, 0x04), Cover("Mask", 0.6)
+        )
+        ciw = CIWManager(
+            screen_tt6_cover,
+            mask_tt6_cover,
+            ImageDef(0.05, 1.57, 16 / 9),
+        )
         reader_task = asyncio.create_task(mgr.message_tracker())
-        await mgr.send_set_aspect_ratio(
+        await ciw.send_set_aspect_ratio(
             2.35,
             CIWAspectRatioMode.FIXED_BOTTOM,
             override_screen_drop_pct=0.0,
@@ -364,38 +368,29 @@ async def main(serial_port=None):
 
 ## CIWManager
 
-A class that manages the connection, screen and mask
-
-Can be used as an async context manager
+A class that manages a screen and mask simultaneously
 
 Constructor parameters:
 
 Parameter|Description
 --|--
-`serial_port`|The serial port to use.  See [Opening a connection](#opening-a-connection) for the valid values.
-`screen_tt_addr`|the TTBus address of the screen
-`mask_tt_addr`|the TTBus address of the mask
-`screen_max_drop`|max drop of screen in metres
-`mask_max_drop`|max drop of mask in metres
+`screen_tt6_cover`|The `TT6Cover` through which the screen cover can be controlled
+`mask_tt6_cover`|The `TT6Cover` through which the mask cover can be controlled
 `image_def`|An ImageDef object describing where the image area on the screen cover is
 
 Property|Description
 --|--
-`CIWManager.helper`|The `CIWHelper` sensor object containing the two `Cover` objects
 `CIWManager.screen_tt6_cover`|The `TT6Cover` through which the screen cover can be controlled
 `CIWManager.mask_tt6_cover`|The `TT6Cover` through which the mask cover can be controlled
+`CIWManager.helper`|The `CIWHelper` sensor object referencing the `Cover` sensor objects referenced by the screen and mask `TT6Cover` objects
 
 Method|Description
 --|--
-`CIWManager.open()`|Open the connection<br>Called automatically if the object is used as a context manager
-`CIWManager.close()`|Close the connection<br>Called automatically if the object is used as a context manager
-`CIWManager.message_tracker()`|A coroutine that must be running in the background for the manager to be able to track cover positions
-`CIWManager.send_pos_request()`|Send POS requests to the controller for the screen and mask
-`CIWManager.send_close_command()`|Send a close command to the controller for the screen and mask
-`CIWManager.send_open_command()`|Send an open command to the controller for the screen and mask
-`CIWManager.send_stop_command()`|Send a stop command to the controller for the screen and mask
+`CIWManager.send_pos_request()`|Send a POS request to the screen and mask
+`CIWManager.send_close_command()`|Send a close command to the screen and mask
+`CIWManager.send_open_command()`|Send an open command to the screen and mask
+`CIWManager.send_stop_command()`|Send a stop command to the screen and mask
 `CIWManager.send_set_aspect_ratio(*args, **kwargs)`|Send commands to set a specific aspect ratio<br>See `CIWHelper` for more details
-`CIWManager.wait_for_motion_to_complete()`|Waits for motion to complete<br>Has side effect of notifying observers of the covers when they go idle
 
 ## CIWHelper
 
@@ -405,8 +400,8 @@ Constructor parameters:
 
 Parameter|Description
 --|--
-`screen_max_drop`|max drop of screen in metres
-`mask_max_drop`|max drop of mask in metres
+`screen`|A `Cover` sensor object representing the screen
+`mask`|A `Cover` sensor object representing the mask
 `image_def`|An ImageDef object describing where the image area on the screen cover is
 
 Properties:

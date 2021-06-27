@@ -1,54 +1,17 @@
-from nicett6.cover_manager import CoverManager
 from nicett6.cover import TT6Cover
-from nicett6.ttbus_device import TTBusDeviceAddress
 from nicett6.ciw_helper import CIWHelper, ImageDef
 
 
 class CIWManager:
     def __init__(
         self,
-        serial_port: str,
-        screen_tt_addr: TTBusDeviceAddress,
-        mask_tt_addr: TTBusDeviceAddress,
-        screen_max_drop: float,
-        mask_max_drop: float,
+        screen_tt6_cover: TT6Cover,
+        mask_tt6_cover: TT6Cover,
         image_def: ImageDef,
     ):
-        self._screen_tt_addr = screen_tt_addr
-        self._mask_tt_addr = mask_tt_addr
-        self.screen_tt6_cover: TT6Cover = None
-        self.mask_tt6_cover: TT6Cover = None
-        self._mgr = CoverManager(serial_port)
-        self.helper = CIWHelper(screen_max_drop, mask_max_drop, image_def)
-
-    async def __aenter__(self):
-        await self.open()
-        return self
-
-    async def __aexit__(self, exception_type, exception_value, traceback):
-        await self.close()
-
-    async def open(self):
-        await self._mgr.open()
-        self.screen_tt6_cover = await self._mgr.add_cover(
-            self._screen_tt_addr,
-            self.helper.screen,
-        )
-        self.mask_tt6_cover = await self._mgr.add_cover(
-            self._mask_tt_addr,
-            self.helper.mask,
-        )
-
-    async def close(self):
-        await self._mgr.close()
-        self.screen_tt6_cover = None
-        self.mask_tt6_cover = None
-
-    async def message_tracker(self):
-        await self._mgr.message_tracker()
-
-    async def wait_for_motion_to_complete(self):
-        await self._mgr.wait_for_motion_to_complete()
+        self.screen_tt6_cover: TT6Cover = screen_tt6_cover
+        self.mask_tt6_cover: TT6Cover = mask_tt6_cover
+        self.helper = CIWHelper(screen_tt6_cover.cover, mask_tt6_cover.cover, image_def)
 
     async def send_pos_request(self):
         await self.screen_tt6_cover.send_pos_request()
