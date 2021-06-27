@@ -245,6 +245,11 @@ Parameter|Description
 --|--
 `serial_port`|The serial port to use.  See [Opening a connection](#opening-a-connection) for the valid values.
 
+Property|Description
+--|--
+`serial_port`|The serial port in use
+`tt6_covers`|All of the `TT6Cover` objects that have been added (the returned object is a `ValuesView` onto the internal dict)
+
 Method|Description
 --|--
 `CoverManager.open()`|Open the connection<br>Called automatically if the object is used as a context manager

@@ -12,7 +12,15 @@ class CoverManager:
         self._serial_port = serial_port
         self._message_tracker_reader: TT6Reader = None
         self._writer: TT6Writer = None
-        self._tt6_covers = {}
+        self._tt6_covers_dict = {}
+
+    @property
+    def serial_port(self):
+        return self._serial_port
+
+    @property
+    def tt6_covers(self):
+        return self._tt6_covers_dict.values()
 
     async def __aenter__(self):
         await self.open()
@@ -42,8 +50,8 @@ class CoverManager:
         async for msg in self._message_tracker_reader:
             _LOGGER.debug(f"msg:{msg}")
             if isinstance(msg, PctPosResponse):
-                if msg.tt_addr in self._tt6_covers:
-                    tt6_cover = self._tt6_covers[msg.tt_addr]
+                if msg.tt_addr in self._tt6_covers_dict:
+                    tt6_cover = self._tt6_covers_dict[msg.tt_addr]
                     await tt6_cover.cover.set_drop_pct(msg.pct_pos / 1000.0)
         _LOGGER.debug("message tracker finished")
 
@@ -51,15 +59,15 @@ class CoverManager:
         tt6_cover = TT6Cover(tt_addr, cover, self._writer)
         await tt6_cover.send_pos_request()
         tt6_cover.enable_notifier()
-        self._tt6_covers[tt_addr] = tt6_cover
+        self._tt6_covers_dict[tt_addr] = tt6_cover
         return tt6_cover
 
     async def remove_covers(self):
-        for tt6_cover in self._tt6_covers.values():
+        for tt6_cover in self._tt6_covers_dict.values():
             await tt6_cover.disable_notifier()
-        self._tt6_covers = {}
+        self._tt6_covers_dict = {}
 
     async def wait_for_motion_to_complete(self):
         return await wait_for_motion_to_complete(
-            [tt6_cover.cover for tt6_cover in self._tt6_covers.values()]
+            [tt6_cover.cover for tt6_cover in self._tt6_covers_dict.values()]
         )

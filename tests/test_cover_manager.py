@@ -55,7 +55,7 @@ class TestCoverManager(IsolatedAsyncioTestCase):
     async def asyncSetUp(self):
         await self.mgr.open()
         await self.mgr.add_cover(self.tt_addr, Cover("Cover", self.max_drop))
-        self.tt6_cover = self.mgr._tt6_covers[self.tt_addr]
+        self.tt6_cover = self.mgr._tt6_covers_dict[self.tt_addr]
         self.cover = self.tt6_cover.cover
 
     async def test1(self):
