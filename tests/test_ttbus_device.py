@@ -5,8 +5,8 @@ from nicett6.ttbus_device import TTBusDeviceAddress
 class TestDevice(unittest.TestCase):
     def test1(self):
         tt_addr = TTBusDeviceAddress(0x02, 0x04)
-        self.assertEqual(str(tt_addr), "TTBusDeviceAddress(02, 04)")
-        self.assertEqual(f"{tt_addr}", "TTBusDeviceAddress(02, 04)")
+        self.assertEqual(str(tt_addr), "TTBusDeviceAddress(0x02, 0x04)")
+        self.assertEqual(f"{tt_addr}", "TTBusDeviceAddress(0x02, 0x04)")
 
     def test2(self):
         tt_addr1 = TTBusDeviceAddress(0x02, 0x04)

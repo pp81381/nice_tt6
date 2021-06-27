@@ -1,6 +1,3 @@
-from nicett6.utils import AsyncObservable
-
-
 class TTBusDeviceAddress:
     def __init__(self, address, node):
         self.address = address
@@ -11,7 +8,7 @@ class TTBusDeviceAddress:
         return self.address, self.node
 
     def __str__(self):
-        return f"{type(self).__name__}({self.address:02X}, {self.node:02X})"
+        return f"{type(self).__name__}(0x{self.address:02X}, 0x{self.node:02X})"
 
     def __eq__(self, other):
         return self.as_tuple == other.as_tuple
