@@ -9,6 +9,7 @@ _LOGGER = logging.getLogger(__name__)
 
 class CoverManager:
     def __init__(self, serial_port: str):
+        self._conn = None
         self._serial_port = serial_port
         self._message_tracker_reader: TT6Reader = None
         self._writer: TT6Writer = None
@@ -39,11 +40,12 @@ class CoverManager:
         await self._writer.send_web_on()
 
     async def close(self):
-        self._conn.close()
-        self._conn = None
+        await self.remove_covers()
+        self._conn.remove_reader(self._message_tracker_reader)
         self._message_tracker_reader = None
         self._writer = None
-        await self.remove_covers()
+        self._conn.close()
+        self._conn = None
 
     async def message_tracker(self):
         _LOGGER.debug("message_tracker started")
