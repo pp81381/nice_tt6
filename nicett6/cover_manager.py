@@ -1,6 +1,6 @@
 import logging
 from nicett6.connection import TT6Connection, TT6Writer, TT6Reader
-from nicett6.cover import Cover, TT6Cover, wait_for_motion_to_complete
+from nicett6.cover import Cover, TT6Cover
 from nicett6.decode import PctPosResponse
 from nicett6.ttbus_device import TTBusDeviceAddress
 
@@ -68,8 +68,3 @@ class CoverManager:
         for tt6_cover in self._tt6_covers_dict.values():
             await tt6_cover.disable_notifier()
         self._tt6_covers_dict = {}
-
-    async def wait_for_motion_to_complete(self):
-        return await wait_for_motion_to_complete(
-            [tt6_cover.cover for tt6_cover in self._tt6_covers_dict.values()]
-        )

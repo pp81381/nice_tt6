@@ -1,7 +1,7 @@
 import argparse
 import asyncio
 import logging
-from nicett6.cover import Cover
+from nicett6.cover import Cover, wait_for_motion_to_complete
 from nicett6.cover_manager import CoverManager
 from nicett6.ttbus_device import TTBusDeviceAddress
 
@@ -31,10 +31,10 @@ async def example(serial_port):
         logger_task = asyncio.create_task(log_cover_state(tt6_cover.cover))
 
         await tt6_cover.send_drop_pct_command(0.9)
-        await mgr.wait_for_motion_to_complete()
+        await wait_for_motion_to_complete([tt6_cover.cover])
 
         await tt6_cover.send_close_command()
-        await mgr.wait_for_motion_to_complete()
+        await wait_for_motion_to_complete([tt6_cover.cover])
 
         logger_task.cancel()
         await logger_task

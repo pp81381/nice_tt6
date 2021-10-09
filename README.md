@@ -222,10 +222,10 @@ async def example(serial_port):
         logger_task = asyncio.create_task(log_cover_state(tt6_cover.cover))
 
         await tt6_cover.send_drop_pct_command(0.9)
-        await mgr.wait_for_motion_to_complete()
+        await wait_for_motion_to_complete([tt6_cover.cover])
 
         await tt6_cover.send_close_command()
-        await mgr.wait_for_motion_to_complete()
+        await wait_for_motion_to_complete([tt6_cover.cover])
 
         logger_task.cancel()
         await logger_task
@@ -256,8 +256,6 @@ Method|Description
 `CoverManager.close()`|Close the connection<br>Called automatically if the object is used as a context manager
 `CoverManager.add_cover(tt_addr, cover)`|Add a cover to be managed<br>tt_addr is the TTBus address of the cover<br>The connection must be open so that the initial position can be requested
 `CoverManager.message_tracker()`|A coroutine that must be running in the background for the manager to be able to track cover positions
-`CoverManager.wait_for_motion_to_complete()`|Waits for motion to complete<br>Has side effect of notifying observers of the cover when it goes idle
-
 
 ## Cover
 
@@ -298,6 +296,10 @@ Method|Description
 `Cover.moved()`|Called to indicate movement<br>When initiating movement, call `moved()` so that `is_moving` will be meaningful in the interval before the first POS message comes back from the cover<br>Will notify observers of the state change
 `Cover.idle()`|Called to indicate that the cover is idle<br>After detecting that the cover is idle, call `idle()` so that the next movement direction will be correctly inferred<br>Will notify observers of the state change
 `Cover.check_for_idle()`|Called to check whether movement has ceased<br>Returns True if the cover is idle<br>Will invoke Cover.idle() if the cover became idle since the last call
+
+Helper|Description
+--|--
+`wait_for_motion_to_complete(covers)`|Waits for motion of a list of covers to complete<br>Has side effect of notifying observers of the cover when it goes idle
 
 
 ## TT6Cover
@@ -367,7 +369,7 @@ async def main(serial_port=None):
             override_screen_drop_pct=0.0,
             override_mask_drop_pct=1.0,
         )
-        await mgr.wait_for_motion_to_complete()
+        await ciw.wait_for_motion_to_complete()
     await reader_task
 ```
 
@@ -396,6 +398,7 @@ Method|Description
 `CIWManager.send_open_command()`|Send an open command to the screen and mask
 `CIWManager.send_stop_command()`|Send a stop command to the screen and mask
 `CIWManager.send_set_aspect_ratio(*args, **kwargs)`|Send commands to set a specific aspect ratio<br>See `CIWHelper` for more details
+`CIWManager.wait_for_motion_to_complete()`|Waits for motion to complete for both screen and mask<br>Has side effect of notifying observers of the cover when it goes idle
 
 ## CIWHelper
 

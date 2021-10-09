@@ -1,4 +1,4 @@
-from nicett6.cover import TT6Cover
+from nicett6.cover import TT6Cover, wait_for_motion_to_complete
 from nicett6.ciw_helper import CIWHelper, ImageDef
 
 
@@ -34,3 +34,11 @@ class CIWManager:
         if new_drops is not None:
             await self.screen_tt6_cover.send_drop_pct_command(new_drops[0])
             await self.mask_tt6_cover.send_drop_pct_command(new_drops[1])
+
+    async def wait_for_motion_to_complete(self):
+        return await wait_for_motion_to_complete(
+            [
+                self.screen_tt6_cover.cover,
+                self.mask_tt6_cover.cover,
+            ]
+        )

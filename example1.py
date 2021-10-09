@@ -18,10 +18,10 @@ async def request_screen_position(writer, tt_addr):
     _LOGGER.info("screen position request responses: %r", responses)
 
 
-async def example_ciw1(mgr: CIWManager, ciw: CIWManager):
+async def example_ciw1(ciw: CIWManager):
     _LOGGER.info("closing screen")
     await ciw.send_close_command()
-    await mgr.wait_for_motion_to_complete()
+    await ciw.wait_for_motion_to_complete()
     _LOGGER.info("screen closed")
     # Calculate position as though screen were down
     await ciw.send_set_aspect_ratio(
@@ -30,17 +30,17 @@ async def example_ciw1(mgr: CIWManager, ciw: CIWManager):
         override_screen_drop_pct=0.0,
         override_mask_drop_pct=1.0,
     )
-    await mgr.wait_for_motion_to_complete()
+    await ciw.wait_for_motion_to_complete()
     _LOGGER.info("screen position set")
 
 
-async def example_ciw2(mgr: CoverManager, ciw: CIWManager):
+async def example_ciw2(ciw: CIWManager):
     _LOGGER.info("closing screen")
     await ciw.send_close_command()
-    await mgr.wait_for_motion_to_complete()
+    await ciw.wait_for_motion_to_complete()
     _LOGGER.info("screen closed, opening screen")
     await ciw.send_open_command()
-    await mgr.wait_for_motion_to_complete()
+    await ciw.wait_for_motion_to_complete()
     _LOGGER.info("screen opened")
 
 
@@ -59,7 +59,7 @@ async def main(serial_port, example):
         )
         with ciw_position_logger(ciw.helper, logging.INFO):
             reader_task = asyncio.create_task(mgr.message_tracker())
-            example_task = asyncio.create_task(example(mgr, ciw))
+            example_task = asyncio.create_task(example(ciw))
             writer = mgr._conn.get_writer()
             request_task = asyncio.create_task(
                 run_coro_after_delay(

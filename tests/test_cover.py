@@ -1,8 +1,14 @@
 import asyncio
 from nicett6.ttbus_device import TTBusDeviceAddress
 from unittest import IsolatedAsyncioTestCase
-from nicett6.cover import Cover, TT6Cover
+from nicett6.cover import Cover, TT6Cover, POLLING_INTERVAL, wait_for_motion_to_complete
 from unittest.mock import AsyncMock, patch
+
+
+async def cleanup_task(task):
+    if not task.done():
+        task.cancel()
+    await task
 
 
 class TestCover(IsolatedAsyncioTestCase):
@@ -129,6 +135,42 @@ class TestCover(IsolatedAsyncioTestCase):
             await asyncio.sleep(self.cover.MOVEMENT_THRESHOLD_INTERVAL + 0.1)
             self.assertTrue(await self.cover.check_for_idle())
             p.assert_awaited_once()
+
+    async def test9a(self):
+        self.assertFalse(self.cover.is_moving)
+        self.assertTrue(await self.cover.check_for_idle())
+        task = asyncio.create_task(wait_for_motion_to_complete([self.cover]))
+        self.addAsyncCleanup(cleanup_task, task)
+        self.assertFalse(task.done())
+        await asyncio.sleep(POLLING_INTERVAL + 0.1)
+        self.assertTrue(task.done())
+        await task
+        self.assertTrue(await self.cover.check_for_idle())
+
+    async def test9b(self):
+        self.assertTrue(await self.cover.check_for_idle())
+        await self.cover.moved()
+        self.assertFalse(await self.cover.check_for_idle())
+
+        task = asyncio.create_task(wait_for_motion_to_complete([self.cover]))
+        self.addAsyncCleanup(cleanup_task, task)
+
+        self.assertTrue(self.cover.is_moving)
+        self.assertFalse(await self.cover.check_for_idle())
+        self.assertFalse(task.done())
+
+        await asyncio.sleep(POLLING_INTERVAL + 0.1)
+
+        self.assertTrue(self.cover.is_moving)
+        self.assertFalse(await self.cover.check_for_idle())
+        self.assertFalse(task.done())
+
+        await asyncio.sleep(Cover.MOVEMENT_THRESHOLD_INTERVAL)
+
+        self.assertFalse(self.cover.is_moving)
+        self.assertTrue(await self.cover.check_for_idle())
+        self.assertTrue(task.done())
+        await task
 
     async def test10(self):
         self.assertTrue(self.cover.is_closed)
