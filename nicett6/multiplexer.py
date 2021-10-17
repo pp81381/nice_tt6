@@ -141,8 +141,8 @@ class MultiplexerSerialConnection:
         return self.writer_factory(self)
 
     def close(self):
-        assert self.is_open
-        self.transport.close()
-        self.transport = None
-        self.protocol = None
-        self.is_open = False
+        if self.is_open:
+            self.transport.close()
+            self.transport = None
+            self.protocol = None
+            self.is_open = False

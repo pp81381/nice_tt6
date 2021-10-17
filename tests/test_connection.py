@@ -1,3 +1,5 @@
+from typing import ValuesView
+from serial.serialutil import SerialException
 from nicett6.decode import AckResponse
 from nicett6.connection import open_connection
 from nicett6.ttbus_device import TTBusDeviceAddress
@@ -37,3 +39,13 @@ class TestReaderAndWriter(IsolatedAsyncioTestCase):
             writer = conn.get_writer()
             await writer.send_web_on()
             conn.transport.write.assert_called_once_with(b"WEB_ON" + RCV_EOL)
+
+
+class TestOpenConnection(IsolatedAsyncioTestCase):
+    async def test1(self):
+        with patch(
+            "nicett6.connection.TT6Connection.open", side_effect=ValueError("Test")
+        ):
+            with self.assertRaises(ValueError):
+                async with open_connection():
+                    pass
