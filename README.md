@@ -363,11 +363,13 @@ async def main(serial_port=None):
             ImageDef(0.05, 1.57, 16 / 9),
         )
         reader_task = asyncio.create_task(mgr.message_tracker())
+        baseline_drop = (
+            ciw.helper.screen.max_drop - ciw.helper.image_def.bottom_border_height
+        )
         await ciw.send_set_aspect_ratio(
             2.35,
             CIWAspectRatioMode.FIXED_BOTTOM,
-            override_screen_drop_pct=0.0,
-            override_mask_drop_pct=1.0,
+            baseline_drop,
         )
         await ciw.wait_for_motion_to_complete()
     await reader_task

@@ -23,12 +23,14 @@ async def example_ciw1(ciw: CIWManager):
     await ciw.send_close_command()
     await ciw.wait_for_motion_to_complete()
     _LOGGER.info("screen closed")
-    # Calculate position as though screen were down
+    # Use the bottom of the fully down screen as baseline
+    baseline_drop = (
+        ciw.helper.screen.max_drop - ciw.helper.image_def.bottom_border_height
+    )
     await ciw.send_set_aspect_ratio(
         2.35,
         CIWAspectRatioMode.FIXED_BOTTOM,
-        override_screen_drop_pct=0.0,
-        override_mask_drop_pct=1.0,
+        baseline_drop,
     )
     await ciw.wait_for_motion_to_complete()
     _LOGGER.info("screen position set")
