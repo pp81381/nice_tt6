@@ -143,14 +143,13 @@ class TestCIWManager(IsolatedAsyncioTestCase):
         await self.ciw.send_set_aspect_ratio(
             2.35,
             CIWAspectRatioMode.FIXED_MIDDLE,
-            override_screen_drop_pct=0.0,
-            override_mask_drop_pct=1.0,
+            1.05,
         )
         writer = self.conn.get_writer.return_value
         writer.send_web_move_command.assert_has_awaits(
             [
-                call(self.screen_tt_addr, 0.10957446808510651),
-                call(self.mask_tt_addr, 0.5385638297872342),
+                call(self.screen_tt_addr, 0.1095744680851064),
+                call(self.mask_tt_addr, 0.5385638297872338),
             ]
         )
 

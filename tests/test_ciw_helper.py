@@ -1,5 +1,10 @@
 import asyncio
-from nicett6.ciw_helper import CIWAspectRatioMode, CIWHelper, ImageDef
+from nicett6.ciw_helper import (
+    CIWAspectRatioMode,
+    CIWHelper,
+    ImageDef,
+    calculate_new_drops,
+)
 from nicett6.cover import Cover
 from unittest import TestCase, IsolatedAsyncioTestCase
 from unittest.mock import patch
@@ -21,6 +26,240 @@ class TestImageDef(TestCase):
     def test3(self):
         with self.assertRaises(ValueError):
             self.image_def.implied_image_height(1.0)
+
+
+class TestCalculateDrops(TestCase):
+    def setUp(self):
+        self.screen_max_drop = 2.0
+        self.mask_max_drop = 0.8
+        self.image_def = ImageDef(0.05, 1.8, 16 / 9)
+
+    def calculate_new_drops(
+        self, target_aspect_ratio: float, mode: CIWAspectRatioMode, baseline_drop: float
+    ):
+        return calculate_new_drops(
+            target_aspect_ratio,
+            mode,
+            baseline_drop,
+            self.screen_max_drop,
+            self.mask_max_drop,
+            self.image_def,
+        )
+
+    def test_fb1(self):
+        """FIXED_BOTTOM with baseline of screen fully down, target of 2.35."""
+        baseline_drop = self.screen_max_drop - self.image_def.bottom_border_height
+        screen_drop_pct, mask_drop_pct = self.calculate_new_drops(
+            2.35,
+            CIWAspectRatioMode.FIXED_BOTTOM,
+            baseline_drop,
+        )
+        self.assertAlmostEqual(screen_drop_pct, 0.0)  # Fully down
+        self.assertAlmostEqual(mask_drop_pct, 0.26462766)
+
+    def test_fb2(self):
+        """FIXED_BOTTOM with baseline of screen fully down, target of 16:9."""
+        baseline_drop = self.screen_max_drop - self.image_def.bottom_border_height
+        screen_drop_pct, mask_drop_pct = self.calculate_new_drops(
+            16 / 9,
+            CIWAspectRatioMode.FIXED_BOTTOM,
+            baseline_drop,
+        )
+        self.assertAlmostEqual(screen_drop_pct, 0.0)  # Fully down
+        self.assertAlmostEqual(mask_drop_pct, 0.8125)
+
+    def test_fb3(self):
+        """FIXED_BOTTOM with baseline too high target of 16:9."""
+        baseline_drop = (
+            self.screen_max_drop - self.image_def.bottom_border_height + 0.01
+        )
+        with self.assertRaises(ValueError):
+            self.calculate_new_drops(
+                16 / 9,
+                CIWAspectRatioMode.FIXED_BOTTOM,
+                baseline_drop,
+            )
+
+    def test_fb4(self):
+        """FIXED_BOTTOM with lowest possible baseline for target of 2.35."""
+        baseline_drop = self.image_def.implied_image_height(2.35)
+        screen_drop_pct, mask_drop_pct = self.calculate_new_drops(
+            2.35,
+            CIWAspectRatioMode.FIXED_BOTTOM,
+            baseline_drop,
+        )
+        self.assertAlmostEqual(screen_drop_pct, 0.294148936)
+        self.assertAlmostEqual(mask_drop_pct, 1.0)
+
+    def test_fb5(self):
+        """FIXED_BOTTOM with less than the lowest possible baseline for target."""
+        baseline_drop = self.image_def.implied_image_height(2.35) - 0.01
+        with self.assertRaises(ValueError):
+            self.calculate_new_drops(
+                2.35,
+                CIWAspectRatioMode.FIXED_BOTTOM,
+                baseline_drop,
+            )
+
+    def test_ft1(self):
+        """FIXED_TOP with baseline of screen fully down, target of 16:9."""
+        baseline_drop = (
+            self.screen_max_drop
+            - self.image_def.bottom_border_height
+            - self.image_def.height
+        )
+        screen_drop_pct, mask_drop_pct = self.calculate_new_drops(
+            16 / 9,
+            CIWAspectRatioMode.FIXED_TOP,
+            baseline_drop,
+        )
+        self.assertAlmostEqual(screen_drop_pct, 0.0)  # Fully down
+        self.assertAlmostEqual(mask_drop_pct, 0.8125)
+
+    def test_ft2(self):
+        """FIXED_TOP with baseline of screen fully down, target of 2.35."""
+        baseline_drop = (
+            self.screen_max_drop
+            - self.image_def.bottom_border_height
+            - self.image_def.height
+        )
+        screen_drop_pct, mask_drop_pct = self.calculate_new_drops(
+            2.35,
+            CIWAspectRatioMode.FIXED_TOP,
+            baseline_drop,
+        )
+        self.assertAlmostEqual(screen_drop_pct, 0.219148936)
+        self.assertAlmostEqual(mask_drop_pct, 0.8125)
+
+    def test_ft3(self):
+        """FIXED_TOP with baseline of 0, target of 2.35."""
+        baseline_drop = 0.0
+        screen_drop_pct, mask_drop_pct = self.calculate_new_drops(
+            2.35,
+            CIWAspectRatioMode.FIXED_TOP,
+            baseline_drop,
+        )
+        self.assertAlmostEqual(screen_drop_pct, 0.294148936)
+        self.assertAlmostEqual(mask_drop_pct, 1.0)
+
+    def test_ft4(self):
+        """FIXED_TOP with baseline of 0, target of 16:9."""
+        baseline_drop = 0.0
+        screen_drop_pct, mask_drop_pct = self.calculate_new_drops(
+            16 / 9,
+            CIWAspectRatioMode.FIXED_TOP,
+            baseline_drop,
+        )
+        self.assertAlmostEqual(screen_drop_pct, 0.075)
+        self.assertAlmostEqual(mask_drop_pct, 1.0)
+
+    def test_ft5(self):
+        """FIXED_TOP with max possible baseline and screen fully open"""
+        baseline_drop = self.mask_max_drop
+        image_height = (
+            self.screen_max_drop
+            - self.image_def.bottom_border_height
+            - self.mask_max_drop
+        )
+        aspect_ratio = self.image_def.width / image_height
+        screen_drop_pct, mask_drop_pct = self.calculate_new_drops(
+            aspect_ratio,
+            CIWAspectRatioMode.FIXED_TOP,
+            baseline_drop,
+        )
+        self.assertAlmostEqual(screen_drop_pct, 0.0)
+        self.assertAlmostEqual(mask_drop_pct, 0.0)
+
+    def test_ft6(self):
+        """FIXED_TOP with greater than max possible baseline"""
+        baseline_drop = self.mask_max_drop + 0.01
+        image_height = (
+            self.screen_max_drop
+            - self.image_def.bottom_border_height
+            - self.mask_max_drop
+        )
+        aspect_ratio = self.image_def.width / image_height
+        with self.assertRaises(ValueError):
+            self.calculate_new_drops(
+                aspect_ratio,
+                CIWAspectRatioMode.FIXED_TOP,
+                baseline_drop,
+            )
+
+    def test_ft7(self):
+        """FIXED_TOP with negative baseline"""
+        baseline_drop = -0.1
+        with self.assertRaises(ValueError):
+            self.calculate_new_drops(
+                2.35,
+                CIWAspectRatioMode.FIXED_TOP,
+                baseline_drop,
+            )
+
+    def test_fm1(self):
+        """FIXED_MIDDLE with baseline in middle, target of 2.35."""
+        baseline_drop = (
+            self.screen_max_drop
+            - self.image_def.bottom_border_height
+            - self.image_def.height / 2.0
+        )
+        screen_drop_pct, mask_drop_pct = self.calculate_new_drops(
+            2.35,
+            CIWAspectRatioMode.FIXED_MIDDLE,
+            baseline_drop,
+        )
+        self.assertAlmostEqual(screen_drop_pct, 0.109574468)
+        self.assertAlmostEqual(mask_drop_pct, 0.53856383)
+
+    def test_fm2(self):
+        """FIXED_MIDDLE with baseline in middle, target of 16:9."""
+        baseline_drop = (
+            self.screen_max_drop
+            - self.image_def.bottom_border_height
+            - self.image_def.height / 2.0
+        )
+        screen_drop_pct, mask_drop_pct = self.calculate_new_drops(
+            16 / 9,
+            CIWAspectRatioMode.FIXED_MIDDLE,
+            baseline_drop,
+        )
+        self.assertAlmostEqual(screen_drop_pct, 0.0)
+        self.assertAlmostEqual(mask_drop_pct, 0.8125)
+
+    def test_fm3(self):
+        """FIXED_MIDDLE with baseline too high, target of 16:9."""
+        baseline_drop = (
+            self.screen_max_drop
+            - self.image_def.bottom_border_height
+            - self.image_def.height / 2.0
+        ) + 0.01
+        with self.assertRaises(ValueError):
+            self.calculate_new_drops(
+                16 / 9,
+                CIWAspectRatioMode.FIXED_MIDDLE,
+                baseline_drop,
+            )
+
+    def test_fm4(self):
+        """FIXED_MIDDLE with baseline as high as possible for target of 2.35."""
+        baseline_drop = self.image_def.width / 2.35 / 2.0
+        screen_drop_pct, mask_drop_pct = self.calculate_new_drops(
+            2.35,
+            CIWAspectRatioMode.FIXED_MIDDLE,
+            baseline_drop,
+        )
+        self.assertAlmostEqual(screen_drop_pct, 0.294148936)
+        self.assertAlmostEqual(mask_drop_pct, 1.0)
+
+    def test_fm5(self):
+        """FIXED_MIDDLE with baseline slightly too high for target of 2.35."""
+        baseline_drop = self.image_def.width / 2.35 / 2.0 - 0.01
+        with self.assertRaises(ValueError):
+            self.calculate_new_drops(
+                2.35,
+                CIWAspectRatioMode.FIXED_MIDDLE,
+                baseline_drop,
+            )
 
 
 class TestCIW(IsolatedAsyncioTestCase):
@@ -106,222 +345,6 @@ class TestCIW(IsolatedAsyncioTestCase):
         self.assertAlmostEqual(self.helper.image_diagonal, 3.477676334)
         self.assertAlmostEqual(self.helper.image_area, 4.35744681)
 
-    async def test6(self):
-        """Screen fully down, mask set for 2.35 FIXED_BOTTOM"""
-        await self.helper.screen.set_drop_pct(0.0)
-
-        screen_drop_pct, mask_drop_pct = self.helper._calculate_new_drops(
-            2.35, CIWAspectRatioMode.FIXED_BOTTOM
-        )
-        self.assertAlmostEqual(screen_drop_pct, 0.0)
-        self.assertAlmostEqual(mask_drop_pct, 0.26462766)
-
-        await self.helper.screen.set_drop_pct(screen_drop_pct)
-        await self.helper.mask.set_drop_pct(mask_drop_pct)
-        self.assertAlmostEqual(self.helper.screen.drop_pct, 0.0)
-        self.assertAlmostEqual(self.helper.screen.drop, 2.0)
-        self.assertAlmostEqual(self.helper.mask.drop_pct, 0.26462766)
-        self.assertAlmostEqual(self.helper.mask.drop, 0.588297872)
-        self.assertEqual(self.helper.image_is_visible, True)
-        self.assertAlmostEqual(self.helper.image_height, 1.361702128)
-        self.assertAlmostEqual(self.helper.aspect_ratio, 2.35)
-
-    async def test7(self):
-        """Screen fully down, mask set for 16:9 FIXED_TOP (should just move mask)"""
-        await self.helper.screen.set_drop_pct(0.0)
-
-        screen_drop_pct, mask_drop_pct = self.helper._calculate_new_drops(
-            16 / 9, CIWAspectRatioMode.FIXED_TOP
-        )
-        self.assertAlmostEqual(screen_drop_pct, 0.0)
-        self.assertAlmostEqual(mask_drop_pct, 0.8125)
-
-        await self.helper.mask.set_drop_pct(mask_drop_pct)
-        self.assertAlmostEqual(self.helper.screen.drop_pct, 0.0)
-        self.assertAlmostEqual(self.helper.screen.drop, 2.0)
-        self.assertAlmostEqual(self.helper.mask.drop_pct, 0.8125)
-        self.assertAlmostEqual(self.helper.mask.drop, 0.15)
-        self.assertEqual(self.helper.image_is_visible, True)
-        self.assertAlmostEqual(self.helper.image_height, 1.8)
-        self.assertAlmostEqual(self.helper.aspect_ratio, 16 / 9)
-
-    async def test8a(self):
-        """Screen fully down, mask fully up, 2.35 FIXED_TOP"""
-        await self.helper.screen.set_drop_pct(0.0)
-
-        screen_drop_pct, mask_drop_pct = self.helper._calculate_new_drops(
-            2.35, CIWAspectRatioMode.FIXED_TOP
-        )
-        self.assertAlmostEqual(screen_drop_pct, 0.219148936)
-        self.assertAlmostEqual(mask_drop_pct, 0.8125)
-
-        await self.helper.screen.set_drop_pct(screen_drop_pct)
-        await self.helper.mask.set_drop_pct(mask_drop_pct)
-        self.assertAlmostEqual(self.helper.screen.drop_pct, 0.219148936)
-        self.assertAlmostEqual(self.helper.screen.drop, 1.561702128)
-        self.assertAlmostEqual(self.helper.mask.drop_pct, 0.8125)
-        self.assertAlmostEqual(self.helper.mask.drop, 0.15)
-        self.assertEqual(self.helper.image_is_visible, True)
-        self.assertAlmostEqual(self.helper.image_height, 1.361702128)
-        self.assertAlmostEqual(self.helper.aspect_ratio, 2.35)
-
-    async def test8b(self):
-        """Screen fully down, mask set for 2.35 FIXED_TOP"""
-        await self.helper.screen.set_drop_pct(0.0)
-        await self.helper.mask.set_drop_pct(0.8125)
-
-        screen_drop_pct, mask_drop_pct = self.helper._calculate_new_drops(
-            2.35, CIWAspectRatioMode.FIXED_TOP
-        )
-        self.assertAlmostEqual(screen_drop_pct, 0.219148936)
-        self.assertAlmostEqual(mask_drop_pct, 0.8125)
-
-        await self.helper.screen.set_drop_pct(screen_drop_pct)
-        await self.helper.mask.set_drop_pct(mask_drop_pct)
-        self.assertAlmostEqual(self.helper.screen.drop_pct, 0.219148936)
-        self.assertAlmostEqual(self.helper.screen.drop, 1.561702128)
-        self.assertAlmostEqual(self.helper.mask.drop_pct, 0.8125)
-        self.assertAlmostEqual(self.helper.mask.drop, 0.15)
-        self.assertEqual(self.helper.image_is_visible, True)
-        self.assertAlmostEqual(self.helper.image_height, 1.361702128)
-        self.assertAlmostEqual(self.helper.aspect_ratio, 2.35)
-
-    async def test8c(self):
-        """Scenario screen fully down, mask set for 2.35 FIXED_TOP"""
-        screen_drop_pct, mask_drop_pct = self.helper._calculate_new_drops(
-            2.35,
-            CIWAspectRatioMode.FIXED_TOP,
-            override_screen_drop_pct=0.0,
-            override_mask_drop_pct=0.8125,
-        )
-        self.assertAlmostEqual(screen_drop_pct, 0.219148936)
-        self.assertAlmostEqual(mask_drop_pct, 0.8125)
-
-        await self.helper.screen.set_drop_pct(screen_drop_pct)
-        await self.helper.mask.set_drop_pct(mask_drop_pct)
-        self.assertAlmostEqual(self.helper.screen.drop_pct, 0.219148936)
-        self.assertAlmostEqual(self.helper.screen.drop, 1.561702128)
-        self.assertAlmostEqual(self.helper.mask.drop_pct, 0.8125)
-        self.assertAlmostEqual(self.helper.mask.drop, 0.15)
-        self.assertEqual(self.helper.image_is_visible, True)
-        self.assertAlmostEqual(self.helper.image_height, 1.361702128)
-        self.assertAlmostEqual(self.helper.aspect_ratio, 2.35)
-
-    async def test9a(self):
-        """Screen fully down, mask set for 2.35 FIXED_MIDDLE"""
-        await self.helper.screen.set_drop_pct(0.0)
-
-        screen_drop_pct, mask_drop_pct = self.helper._calculate_new_drops(
-            2.35, CIWAspectRatioMode.FIXED_MIDDLE
-        )
-        self.assertAlmostEqual(screen_drop_pct, 0.109574468)
-        self.assertAlmostEqual(mask_drop_pct, 0.53856383)
-
-        await self.helper.screen.set_drop_pct(screen_drop_pct)
-        await self.helper.mask.set_drop_pct(mask_drop_pct)
-        self.assertAlmostEqual(self.helper.screen.drop_pct, 0.109574468)
-        self.assertAlmostEqual(self.helper.screen.drop, 1.780851064)
-        self.assertAlmostEqual(self.helper.mask.drop_pct, 0.53856383)
-        self.assertAlmostEqual(self.helper.mask.drop, 0.369148936)
-        self.assertEqual(self.helper.image_is_visible, True)
-        self.assertAlmostEqual(self.helper.image_height, 1.361702128)
-        self.assertAlmostEqual(self.helper.aspect_ratio, 2.35)
-
-    async def test9b(self):
-        """Scenario screen fully down, mask set for 2.35 FIXED_MIDDLE"""
-        screen_drop_pct, mask_drop_pct = self.helper._calculate_new_drops(
-            2.35, CIWAspectRatioMode.FIXED_MIDDLE, override_screen_drop_pct=0.0
-        )
-        self.assertAlmostEqual(screen_drop_pct, 0.109574468)
-        self.assertAlmostEqual(mask_drop_pct, 0.53856383)
-
-        await self.helper.screen.set_drop_pct(screen_drop_pct)
-        await self.helper.mask.set_drop_pct(mask_drop_pct)
-        self.assertAlmostEqual(self.helper.screen.drop_pct, 0.109574468)
-        self.assertAlmostEqual(self.helper.screen.drop, 1.780851064)
-        self.assertAlmostEqual(self.helper.mask.drop_pct, 0.53856383)
-        self.assertAlmostEqual(self.helper.mask.drop, 0.369148936)
-        self.assertEqual(self.helper.image_is_visible, True)
-        self.assertAlmostEqual(self.helper.image_height, 1.361702128)
-        self.assertAlmostEqual(self.helper.aspect_ratio, 2.35)
-
-    async def test10(self):
-        """Screen fully down, mask set for 16:9 FIXED_MIDDLE (should just move mask)"""
-        await self.helper.screen.set_drop_pct(0.0)
-
-        screen_drop_pct, mask_drop_pct = self.helper._calculate_new_drops(
-            16 / 9, CIWAspectRatioMode.FIXED_MIDDLE
-        )
-        self.assertAlmostEqual(screen_drop_pct, 0.0)
-        self.assertAlmostEqual(mask_drop_pct, 0.8125)
-
-        await self.helper.screen.set_drop_pct(screen_drop_pct)
-        await self.helper.mask.set_drop_pct(mask_drop_pct)
-        self.assertAlmostEqual(self.helper.screen.drop_pct, 0.0)
-        self.assertAlmostEqual(self.helper.screen.drop, 2.0)
-        self.assertAlmostEqual(self.helper.mask.drop_pct, 0.8125)
-        self.assertAlmostEqual(self.helper.mask.drop, 0.15)
-        self.assertEqual(self.helper.image_is_visible, True)
-        self.assertAlmostEqual(self.helper.image_height, 1.8)
-        self.assertAlmostEqual(self.helper.aspect_ratio, 16 / 9)
-
-    async def test11(self):
-        """Screen fully up, mask set for 2.35 FIXED_TOP"""
-        screen_drop_pct, mask_drop_pct = self.helper._calculate_new_drops(
-            2.35, CIWAspectRatioMode.FIXED_TOP
-        )
-        self.assertAlmostEqual(screen_drop_pct, 0.294148936)
-        self.assertAlmostEqual(mask_drop_pct, 1.0)
-
-        await self.helper.screen.set_drop_pct(screen_drop_pct)
-        await self.helper.mask.set_drop_pct(mask_drop_pct)
-        self.assertAlmostEqual(self.helper.screen.drop_pct, 0.294148936)
-        self.assertAlmostEqual(self.helper.screen.drop, 1.411702128)
-        self.assertAlmostEqual(self.helper.mask.drop_pct, 1.0)
-        self.assertAlmostEqual(self.helper.mask.drop, 0)
-        self.assertEqual(self.helper.image_is_visible, True)
-        self.assertAlmostEqual(self.helper.image_height, 1.361702128)
-        self.assertAlmostEqual(self.helper.aspect_ratio, 2.35)
-
-    async def test12(self):
-        """Screen fully up, mask set for 16:9 FIXED_TOP"""
-        screen_drop_pct, mask_drop_pct = self.helper._calculate_new_drops(
-            16 / 9, CIWAspectRatioMode.FIXED_TOP
-        )
-        self.assertAlmostEqual(screen_drop_pct, 0.075)
-        self.assertAlmostEqual(mask_drop_pct, 1.0)
-
-        await self.helper.screen.set_drop_pct(screen_drop_pct)
-        await self.helper.mask.set_drop_pct(mask_drop_pct)
-        self.assertAlmostEqual(self.helper.screen.drop_pct, 0.075)
-        self.assertAlmostEqual(self.helper.screen.drop, 1.85)
-        self.assertAlmostEqual(self.helper.mask.drop_pct, 1.0)
-        self.assertAlmostEqual(self.helper.mask.drop, 0)
-        self.assertEqual(self.helper.image_is_visible, True)
-        self.assertAlmostEqual(self.helper.image_height, 1.8)
-        self.assertAlmostEqual(self.helper.aspect_ratio, 16 / 9)
-
-    async def test13(self):
-        """Screen fully up, mask down by 0.05, set 2.35 FIXED_TOP changed to 16 / 9 FIXED_MIDDLE (won't fit)"""
-        await self.helper.screen.set_drop_pct(1.0)
-        self.helper.mask_drop_pct = 0.95 / self.helper.mask.max_drop
-
-        screen_drop_pct, mask_drop_pct = self.helper._calculate_new_drops(
-            2.35, CIWAspectRatioMode.FIXED_TOP
-        )
-        await self.helper.screen.set_drop_pct(screen_drop_pct)
-        await self.helper.mask.set_drop_pct(mask_drop_pct)
-
-        with self.assertRaises(ValueError):
-            self.helper._calculate_new_drops(16 / 9, CIWAspectRatioMode.FIXED_MIDDLE)
-
-    async def test14(self):
-        """Screen half down, mask up, set 16:9 FIXED_BOTTOM (won't fit)"""
-        await self.helper.screen.set_drop_pct(0.5)
-        await self.helper.mask.set_drop_pct(1.0)
-        with self.assertRaises(ValueError):
-            self.helper._calculate_new_drops(16 / 9, CIWAspectRatioMode.FIXED_BOTTOM)
-
     async def test15(self):
         """Check validations"""
         with self.assertRaises(ValueError):
@@ -332,18 +355,6 @@ class TestCIW(IsolatedAsyncioTestCase):
             await self.helper.mask.set_drop_pct(-0.1)
         with self.assertRaises(ValueError):
             await self.helper.mask.set_drop_pct(1.1)
-
-    async def test16(self):
-        """Mask fully down, set 16:9 FIXED_TOP (won't fit)"""
-        await self.helper.mask.set_drop_pct(0.0)
-        with self.assertRaises(ValueError):
-            self.helper._calculate_new_drops(16 / 9, CIWAspectRatioMode.FIXED_TOP)
-
-    async def test17(self):
-        """Mask fully down, set 16:9 FIXED_MIDDLE (won't fit)"""
-        await self.helper.mask.set_drop_pct(0.0)
-        with self.assertRaises(ValueError):
-            self.helper._calculate_new_drops(16 / 9, CIWAspectRatioMode.FIXED_MIDDLE)
 
     async def test18(self):
         """Test check_for_idle with both covers at once"""

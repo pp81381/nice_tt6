@@ -427,7 +427,7 @@ Methods:
 
 Method|Description
 --|--
-`CIWHelper.calculate_new_drops(target_aspect_ratio, mode, override_screen_drop_pct=None, override_mask_drop_pct=None`)|Calculate the screen and mask drops necessary to set the `target_aspect_ratio`<br>`mode` defines whether the position of the top, middle or bottom of the screen should be held constant<br>(See [CIWAspectRatioMode](#CIWApectRatioMode) for details)<br>Returns `None` if the `target_aspect_ratio` can't be achieved<br>Uses the current position of the covers as the basis of the calculation unless `override_screen_drop_pct` or `override_mask_drop_pct` are supplied
+`CIWHelper.calculate_new_drops(target_aspect_ratio, mode, baseline_drop`)|Calculate the screen and mask drops necessary to set the `target_aspect_ratio`<br>`mode` defines whether the position of the top, middle or bottom of the screen should be held constant relative to `baseline_drop`<br>(See [CIWAspectRatioMode](#CIWApectRatioMode) for details)<br>Returns `None` if the `target_aspect_ratio` can't be achieved
 
 
 ## CIWApectRatioMode
@@ -436,7 +436,7 @@ An enumeration used to specify where the target visible image area should be rel
 
 Enum Value|Description
 --|--
-CIWApectRatioMode.FIXED_TOP|The top of the current visible area is fixed<br>Typically the mask stays where it is and the mask moves up and down<br>If the mask is fully up then it will move to the top of the current image area
+CIWApectRatioMode.FIXED_TOP|The top of the current visible area is fixed<br>Typically the mask stays where it is and the screen moves up and down<br>If the mask is fully up then it will move to the top of the current image area
 CIWApectRatioMode.FIXED_MIDDLE|The middle line of the current visible area is fixed<br>Both the screen and mask will move
 CIWApectRatioMode.FIXED_BOTTOM|The middle line of the current visible area is fixed<br>Typically the screen stays where it is and the mask moves up and down
 
