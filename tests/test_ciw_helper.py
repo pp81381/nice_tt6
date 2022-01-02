@@ -344,14 +344,3 @@ class TestCIW(IsolatedAsyncioTestCase):
         self.assertAlmostEqual(self.helper.aspect_ratio, 2.35)
         self.assertAlmostEqual(self.helper.image_diagonal, 3.477676334)
         self.assertAlmostEqual(self.helper.image_area, 4.35744681)
-
-    async def test15(self):
-        """Check validations"""
-        with self.assertRaises(ValueError):
-            await self.helper.screen.set_drop_pct(-0.1)
-        with self.assertRaises(ValueError):
-            await self.helper.screen.set_drop_pct(1.1)
-        with self.assertRaises(ValueError):
-            await self.helper.mask.set_drop_pct(-0.1)
-        with self.assertRaises(ValueError):
-            await self.helper.mask.set_drop_pct(1.1)
