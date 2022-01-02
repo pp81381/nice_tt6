@@ -3,7 +3,7 @@ import logging
 
 from nicett6.cover import Cover, TT6Cover, wait_for_motion_to_complete
 from nicett6.ciw_helper import CIWHelper, ImageDef
-from nicett6.utils import check_pct
+from nicett6.utils import MAX_ASPECT_RATIO
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -119,7 +119,14 @@ def calculate_new_drops(
     Calculate new screen and mask drops to set a target aspect ratio
 
     Returns a tuple of (screen_drop_pct, mask_drop_pct)
+    Won't accept a baseline_drop that is not sensible
+    Generally tolerant of an invalid aspect ratio
+    Will cap the new image height if it is too large
+    (i.e. if 4:3 is requested on a 16:9 screen)
+    Depending on baseline_drop, the returned percentages could be invalid
+    but note that send_drop_pct_command will cap/floor them
     """
+    check_baseline_drop(mode, baseline_drop, screen_max_drop, mask_max_drop, image_def)
     new_image_height = image_def.implied_image_height(target_aspect_ratio)
     if mode is CIWAspectRatioMode.FIXED_BOTTOM:
         newsd = baseline_drop + image_def.bottom_border_height
@@ -132,7 +139,42 @@ def calculate_new_drops(
         newmd = baseline_drop - new_image_height / 2.0
     else:
         raise ValueError("Invalid aspect ratio mode")
-    return (
-        check_pct("Implied screen drop", 1.0 - newsd / screen_max_drop),
-        check_pct("Implied mask drop", 1.0 - newmd / mask_max_drop),
-    )
+    return 1.0 - newsd / screen_max_drop, 1.0 - newmd / mask_max_drop
+
+
+def check_baseline_drop(
+    mode: CIWAspectRatioMode,
+    baseline_drop: float,
+    screen_max_drop: float,
+    mask_max_drop: float,
+    image_def: ImageDef,
+):
+    """
+    Validate the baseline drop
+
+    Assumes a minimum possible image height defined by the max sensible aspect ratio
+    For min baseline drop, mask drop is always 0
+    For max baseline drop, screen drop is always screen_max_drop
+    """
+    min_image_height = image_def.width / MAX_ASPECT_RATIO
+    if mode is CIWAspectRatioMode.FIXED_BOTTOM:
+        min_baseline_drop = min_image_height
+        max_baseline_drop = screen_max_drop - image_def.bottom_border_height
+    elif mode is CIWAspectRatioMode.FIXED_TOP:
+        min_baseline_drop = 0.0
+        max_baseline_drop = mask_max_drop
+    elif mode is CIWAspectRatioMode.FIXED_MIDDLE:
+        min_baseline_drop = min_image_height / 2.0
+        max_baseline_drop = (
+            screen_max_drop - image_def.bottom_border_height - min_image_height / 2.0
+        )
+    else:
+        raise ValueError("Invalid aspect ratio mode")
+
+    if baseline_drop < min_baseline_drop or baseline_drop > max_baseline_drop:
+        raise ValueError(
+            "Invalid baseline drop of %.5f - should be between %.5f and %.5f",
+            baseline_drop,
+            min_baseline_drop,
+            max_baseline_drop,
+        )

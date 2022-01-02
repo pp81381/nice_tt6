@@ -9,6 +9,8 @@ from typing import Set
 
 _LOGGER = logging.getLogger(__name__)
 
+MIN_ASPECT_RATIO = 0.3
+MAX_ASPECT_RATIO = 3.5
 PCT_ABS_TOL = 0.0000001
 
 
@@ -85,7 +87,7 @@ def check_pct(name: str, pct: float):
 
 
 def check_aspect_ratio(aspect_ratio: float) -> None:
-    if aspect_ratio < 0.3 or aspect_ratio > 3.5:
+    if aspect_ratio < MIN_ASPECT_RATIO or aspect_ratio > MAX_ASPECT_RATIO:
         raise ValueError(f"Aspect ratio ({aspect_ratio}) is not sensible")
 
 
