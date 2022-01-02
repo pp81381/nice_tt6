@@ -1,4 +1,8 @@
+import logging
+
 from nicett6.ttbus_device import TTBusDeviceAddress
+
+_LOGGER = logging.getLogger(__name__)
 
 
 class Encode:
@@ -81,8 +85,14 @@ class Encode:
         """Set position to the percentage given"""
         thousandths: int = round(pct * 1000.0)
         if thousandths < 0:
+            _LOGGER.info(
+                f"Requested percentage position for {tt_addr} of {pct}% floored at 0%"
+            )
             thousandths = 0
         elif thousandths > 1000:
+            _LOGGER.info(
+                f"Requested percentage position for {tt_addr} of {pct}% capped at 100%"
+            )
             thousandths = 1000
         return cls.fmt_msg(
             f"POS > {tt_addr.address:02X} {tt_addr.node:02X} "
