@@ -3,15 +3,13 @@ import logging
 import math
 
 from nicett6.cover import Cover
-from nicett6.utils import AsyncObserver
+from nicett6.utils import AsyncObserver, check_aspect_ratio
 
 _LOGGER = logging.getLogger(__name__)
 
 
 class ImageDef:
     """Static definition of image area relative to the bottom of a cover"""
-
-    HEIGHT_TOLERANCE = 0.00001
 
     def __init__(
         self,
@@ -28,12 +26,10 @@ class ImageDef:
         return self.height * self.aspect_ratio
 
     def implied_image_height(self, target_aspect_ratio):
+        check_aspect_ratio(target_aspect_ratio)
         image_height = self.width / target_aspect_ratio
-        if image_height > self.height + self.HEIGHT_TOLERANCE:
-            raise ValueError(
-                f"Image height implied by target aspect ratio ({image_height}) "
-                f"is greater than the max image height ({self.height})"
-            )
+        if image_height > self.height:
+            image_height = self.height
         return image_height
 
 
