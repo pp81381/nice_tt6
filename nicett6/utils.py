@@ -84,6 +84,11 @@ def check_pct(name: str, pct: float):
     return pct
 
 
+def check_aspect_ratio(aspect_ratio: float) -> None:
+    if aspect_ratio < 0.3 or aspect_ratio > 3.5:
+        raise ValueError(f"Aspect ratio ({aspect_ratio}) is not sensible")
+
+
 async def run_coro_after_delay(coro, delay=2.0):
     _LOGGER.info("run_coro_after_delay started")
     await asyncio.sleep(delay)

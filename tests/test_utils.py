@@ -4,6 +4,7 @@ from nicett6.utils import (
     hex_arg_to_int,
     pct_arg_to_int,
     async_get_platform_serial_port,
+    check_aspect_ratio,
 )
 
 
@@ -33,6 +34,17 @@ class TestValidationAndConversion(TestCase):
             pct_arg_to_int("FFFF")
         with self.assertRaises(ValueError):
             pct_arg_to_int("01000")
+
+    def test_check_aspect_ratio(self):
+        check_aspect_ratio(16 / 9)
+        check_aspect_ratio(4 / 3)
+        check_aspect_ratio(2.35)
+        check_aspect_ratio(2.78)
+        check_aspect_ratio(9 / 16)
+        with self.assertRaises(ValueError):
+            check_aspect_ratio(0.001)
+        with self.assertRaises(ValueError):
+            check_aspect_ratio(4)
 
 
 class TestGetSerial(IsolatedAsyncioTestCase):
