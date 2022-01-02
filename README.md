@@ -363,14 +363,9 @@ async def main(serial_port=None):
             ImageDef(0.05, 1.57, 16 / 9),
         )
         reader_task = asyncio.create_task(mgr.message_tracker())
-        baseline_drop = (
-            ciw.helper.screen.max_drop - ciw.helper.image_def.bottom_border_height
-        )
-        await ciw.send_set_aspect_ratio(
-            2.35,
-            CIWAspectRatioMode.FIXED_BOTTOM,
-            baseline_drop,
-        )
+        mode = CIWAspectRatioMode.FIXED_BOTTOM
+        baseline_drop = ciw.default_baseline_drop(mode)
+        await ciw.send_set_aspect_ratio(2.35, mode, baseline_drop)
         await ciw.wait_for_motion_to_complete()
     await reader_task
 ```
@@ -391,16 +386,31 @@ Property|Description
 --|--
 `CIWManager.screen_tt6_cover`|The `TT6Cover` through which the screen cover can be controlled
 `CIWManager.mask_tt6_cover`|The `TT6Cover` through which the mask cover can be controlled
-`CIWManager.helper`|The `CIWHelper` sensor object referencing the `Cover` sensor objects referenced by the screen and mask `TT6Cover` objects
+`CIWManager.image_def`|An ImageDef object describing where the image area on the screen cover is
 
 Method|Description
 --|--
+`CIWManager.get_helper()`|Return a `CIWHelper` sensor object referencing the `Cover` sensor objects referenced by the screen and mask `TT6Cover` objects
 `CIWManager.send_pos_request()`|Send a POS request to the screen and mask
 `CIWManager.send_close_command()`|Send a close command to the screen and mask
 `CIWManager.send_open_command()`|Send an open command to the screen and mask
 `CIWManager.send_stop_command()`|Send a stop command to the screen and mask
-`CIWManager.send_set_aspect_ratio(*args, **kwargs)`|Send commands to set a specific aspect ratio<br>See `CIWHelper` for more details
+`CIWManager.send_set_aspect_ratio(target_aspect_ratio, mode, baseline_drop)`|Send commands to set a specific aspect ratio<br>See `CIWManager.calculate_new_drops` for more details
 `CIWManager.wait_for_motion_to_complete()`|Waits for motion to complete for both screen and mask<br>Has side effect of notifying observers of the cover when it goes idle
+`CIWManager.calculate_new_drops(target_aspect_ratio, mode, baseline_drop`)|Calculate the screen and mask drops necessary to set the `target_aspect_ratio`<br>`mode` defines whether the position of the top, middle or bottom of the screen should be held constant relative to `baseline_drop`<br>(See [CIWAspectRatioMode](#CIWApectRatioMode) for details)<br>Returns `None` if the `target_aspect_ratio` can't be achieved
+`CIWManager.default_baseline_drop(mode)`|Return the most useful baseline_drop for each mode, e.g. with the screen fully extended
+
+
+## CIWApectRatioMode
+
+An enumeration used to specify where the target visible image area should be relative to the current visible image area
+
+Enum Value|Description
+--|--
+CIWApectRatioMode.FIXED_TOP|The top of the current visible area is fixed<br>Typically the mask stays where it is and the screen moves up and down<br>If the mask is fully up then it will move to the top of the current image area
+CIWApectRatioMode.FIXED_MIDDLE|The middle line of the current visible area is fixed<br>Both the screen and mask will move
+CIWApectRatioMode.FIXED_BOTTOM|The middle line of the current visible area is fixed<br>Typically the screen stays where it is and the mask moves up and down
+
 
 ## CIWHelper
 
@@ -424,23 +434,6 @@ Property|Description
 `CIWHelper.image_area`|the area of the visible image in square metres or `None` if the image is not visible
 `CIWHelper.image_is_visible`|True if the image area is visible or `None` if the image is not visible
 `CIWHelper.aspect_ratio`|The aspect ratio of the visible image or `None` if the image is not visible
-
-Methods:
-
-Method|Description
---|--
-`CIWHelper.calculate_new_drops(target_aspect_ratio, mode, baseline_drop`)|Calculate the screen and mask drops necessary to set the `target_aspect_ratio`<br>`mode` defines whether the position of the top, middle or bottom of the screen should be held constant relative to `baseline_drop`<br>(See [CIWAspectRatioMode](#CIWApectRatioMode) for details)<br>Returns `None` if the `target_aspect_ratio` can't be achieved
-
-
-## CIWApectRatioMode
-
-An enumeration used to specify where the target visible image area should be relative to the current visible image area
-
-Enum Value|Description
---|--
-CIWApectRatioMode.FIXED_TOP|The top of the current visible area is fixed<br>Typically the mask stays where it is and the screen moves up and down<br>If the mask is fully up then it will move to the top of the current image area
-CIWApectRatioMode.FIXED_MIDDLE|The middle line of the current visible area is fixed<br>Both the screen and mask will move
-CIWApectRatioMode.FIXED_BOTTOM|The middle line of the current visible area is fixed<br>Typically the screen stays where it is and the mask moves up and down
 
 ## ImageDef
 

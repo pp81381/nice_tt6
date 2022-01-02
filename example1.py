@@ -2,8 +2,8 @@ import asyncio
 import logging
 from nicett6.cover import Cover
 from nicett6.cover_manager import CoverManager
-from nicett6.ciw_helper import CIWAspectRatioMode, ImageDef, ciw_position_logger
-from nicett6.ciw_manager import CIWManager
+from nicett6.ciw_helper import ImageDef
+from nicett6.ciw_manager import CIWAspectRatioMode, CIWManager
 from nicett6.ttbus_device import TTBusDeviceAddress
 from nicett6.utils import run_coro_after_delay, parse_example_args
 
@@ -23,15 +23,9 @@ async def example_ciw1(ciw: CIWManager):
     await ciw.send_close_command()
     await ciw.wait_for_motion_to_complete()
     _LOGGER.info("screen closed")
-    # Use the bottom of the fully down screen as baseline
-    baseline_drop = (
-        ciw.helper.screen.max_drop - ciw.helper.image_def.bottom_border_height
-    )
-    await ciw.send_set_aspect_ratio(
-        2.35,
-        CIWAspectRatioMode.FIXED_BOTTOM,
-        baseline_drop,
-    )
+    mode: CIWAspectRatioMode = CIWAspectRatioMode.FIXED_BOTTOM
+    baseline_drop = ciw.default_baseline_drop(mode)
+    await ciw.send_set_aspect_ratio(2.35, mode, baseline_drop)
     await ciw.wait_for_motion_to_complete()
     _LOGGER.info("screen position set")
 
@@ -59,7 +53,7 @@ async def main(serial_port, example):
             mask_tt6_cover,
             ImageDef(0.05, 1.57, 16 / 9),
         )
-        with ciw_position_logger(ciw.helper, logging.INFO):
+        with ciw.get_helper().position_logger(logging.INFO):
             reader_task = asyncio.create_task(mgr.message_tracker())
             example_task = asyncio.create_task(example(ciw))
             writer = mgr._conn.get_writer()

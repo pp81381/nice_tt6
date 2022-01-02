@@ -1,18 +1,11 @@
 from contextlib import contextmanager
-from enum import Enum
 import logging
 import math
-from nicett6.utils import AsyncObserver, check_pct
-from nicett6.cover import Cover
 
+from nicett6.cover import Cover
+from nicett6.utils import AsyncObserver
 
 _LOGGER = logging.getLogger(__name__)
-
-
-class CIWAspectRatioMode(Enum):
-    FIXED_TOP = 1
-    FIXED_MIDDLE = 2
-    FIXED_BOTTOM = 3
 
 
 class ImageDef:
@@ -77,24 +70,14 @@ class CIWHelper:
         ih = self.image_height
         return None if ih is None else self.image_width / ih
 
-    def calculate_new_drops(
-        self,
-        target_aspect_ratio: float,
-        mode: CIWAspectRatioMode,
-        baseline_drop: float,
-    ):
+    @contextmanager
+    def position_logger(self, loglevel: int = logging.DEBUG):
+        logger = CIWPositionLogger(self, loglevel)
         try:
-            return calculate_new_drops(
-                target_aspect_ratio,
-                mode,
-                baseline_drop,
-                self.screen.max_drop,
-                self.mask.max_drop,
-                self.image_def,
-            )
-        except ValueError as err:
-            _LOGGER.info(f"Could not determine new drops: {err}")
-            return None
+            logger.start_logging()
+            yield logger
+        finally:
+            logger.stop_logging()
 
 
 def calculate_image_height(screen_drop, mask_drop, image_def):
@@ -112,47 +95,6 @@ def calculate_image_diagonal(height, width):
 
 def calculate_image_area(height, width):
     return width * height if height is not None else None
-
-
-def calculate_new_drops(
-    target_aspect_ratio: float,
-    mode: CIWAspectRatioMode,
-    baseline_drop: float,
-    screen_max_drop: float,
-    mask_max_drop: float,
-    image_def: ImageDef,
-):
-    """
-    Calculate new screen and mask drops to set a target aspect ratio
-
-    Returns a tuple of (screen_drop_pct, mask_drop_pct)
-    """
-    new_image_height = image_def.implied_image_height(target_aspect_ratio)
-    if mode is CIWAspectRatioMode.FIXED_BOTTOM:
-        newsd = baseline_drop + image_def.bottom_border_height
-        newmd = baseline_drop - new_image_height
-    elif mode is CIWAspectRatioMode.FIXED_TOP:
-        newsd = baseline_drop + new_image_height + image_def.bottom_border_height
-        newmd = baseline_drop
-    elif mode is CIWAspectRatioMode.FIXED_MIDDLE:
-        newsd = baseline_drop + new_image_height / 2.0 + image_def.bottom_border_height
-        newmd = baseline_drop - new_image_height / 2.0
-    else:
-        raise ValueError("Invalid aspect ratio mode")
-    return (
-        check_pct("Implied screen drop", 1.0 - newsd / screen_max_drop),
-        check_pct("Implied mask drop", 1.0 - newmd / mask_max_drop),
-    )
-
-
-@contextmanager
-def ciw_position_logger(helper: CIWHelper, loglevel: int = logging.DEBUG):
-    logger = CIWPositionLogger(helper, loglevel)
-    try:
-        logger.start_logging()
-        yield logger
-    finally:
-        logger.stop_logging()
 
 
 class CIWPositionLogger(AsyncObserver):
