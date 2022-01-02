@@ -1,3 +1,6 @@
+from nicett6.ttbus_device import TTBusDeviceAddress
+
+
 class Encode:
     """Helper class to encode commands"""
 
@@ -39,26 +42,28 @@ class Encode:
     }
 
     @classmethod
-    def fmt_msg(cls, msg):
+    def fmt_msg(cls, msg: str) -> bytes:
         return msg.encode("utf-8") + cls.EOL
 
     @classmethod
-    def web_on(cls):
+    def web_on(cls) -> bytes:
         return cls.fmt_msg("WEB_ON")
 
     @classmethod
-    def web_off(cls):
+    def web_off(cls) -> bytes:
         return cls.fmt_msg("WEB_OFF")
 
     @classmethod
-    def simple_command(cls, tt_addr, cmd_code):
+    def simple_command(cls, tt_addr: TTBusDeviceAddress, cmd_code: str) -> bytes:
         return cls.fmt_msg(
             f"CMD {tt_addr.address:02X} {tt_addr.node:02X} "
             f"{cls.SIMPLE_COMMANDS[cmd_code]:02X}"
         )
 
     @classmethod
-    def simple_command_with_data(cls, tt_addr, cmd_code, data):
+    def simple_command_with_data(
+        cls, tt_addr: TTBusDeviceAddress, cmd_code: str, data: int
+    ) -> bytes:
         """
         Encode a command that takes an integer data parameter
 
@@ -72,18 +77,20 @@ class Encode:
         )
 
     @classmethod
-    def web_move_command(cls, tt_addr, pct):
+    def web_move_command(cls, tt_addr: TTBusDeviceAddress, pct: float) -> bytes:
         """Set position to the percentage given"""
-        if pct < 0.0 or pct > 1.0:
-            raise ValueError(f"data out of range 0% to 100%: {pct}")
-        thousandths = round(pct * 1000.0)
+        thousandths: int = round(pct * 1000.0)
+        if thousandths < 0:
+            thousandths = 0
+        elif thousandths > 1000:
+            thousandths = 1000
         return cls.fmt_msg(
             f"POS > {tt_addr.address:02X} {tt_addr.node:02X} "
             f"{thousandths:04d} FFFF FF"
         )
 
     @classmethod
-    def web_pos_request(cls, tt_addr):
+    def web_pos_request(cls, tt_addr: TTBusDeviceAddress) -> bytes:
         """Request the position"""
         return cls.fmt_msg(
             f"POS < {tt_addr.address:02X} {tt_addr.node:02X} " "FFFF FFFF FF"

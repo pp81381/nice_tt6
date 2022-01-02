@@ -148,7 +148,7 @@ Method|Description
 `TT6Writer.send_web_off()`|Send the WEB_OFF command to the controller to disable web commands and to instruct the controller not to send the motor positions as they move
 `TT6Writer.send_simple_command(tt_addr, cmd_code)`|Send `cmd_code` to the TTBus device at `tt_addr`<br>See the table below for a list of all valid `cmd_code` values
 `TT6Writer.send_hex_move_command(tt_addr, hex_pos)`|Instruct the controller to move the TTBus device at `tt_addr` to `hex_pos`<br>`hex_pos` is a value between 0x00 (fully down/open) and 0xFF (fully up/closed)
-`TT6Writer.send_web_move_command(tt_addr, pct_pos)`|Instruct the controller to move the TTBus device at `tt_addr` to `pct_pos`<br>`pct_pos` is a value between 0.0 (fully down/open) and 1.0 (fully up/closed)<br>Web commands must be enabled for this command to work
+`TT6Writer.send_web_move_command(tt_addr, pct_pos)`|Instruct the controller to move the TTBus device at `tt_addr` to `pct_pos`<br>`pct_pos` is a value between 0.0 (fully down/open) and 1.0 (fully up/closed)<br>Out of range values for `pct_pos` will be rounded up or down accordingly<br>Web commands must be enabled for this command to work
 `TT6Writer.send_web_pos_request(tt_addr)`|Send a request to the controller to send the position of the TTBus device at `tt_addr`<br>Web commands must be enabled for this command to work
 `TT6Writer.process_request(coro, [time_window])`|Send a command and collect the response messages that arrive in time_window
 
@@ -317,7 +317,7 @@ Property|Description
 Method|Description
 --|--
 `TT6Cover.send_pos_request()`|Send a POS request to the controller
-`TT6Cover.send_drop_pct_command(drop_pct)`|Send a POS command to the controller to set the drop percentage of the Cover to `drop_pct`<br>`drop_pct` must be between 0.0 (fully open/down) and 1.0 (fully closed/up)
+`TT6Cover.send_drop_pct_command(drop_pct)`|Send a POS command to the controller to set the drop percentage of the Cover to `drop_pct`<br>`drop_pct` should be between 0.0 (fully open/down) and 1.0 (fully closed/up)<br>Out of range values for `drop_pct` will be rounded up/down accordingly
 `TT6Cover.send_close_command()`|Send a close command to the controller for the Cover
 `TT6Cover.send_open_command()`|Send an open command to the controller for the Cover
 `TT6Cover.send_preset_command(preset_num)`|Send an preset command to the controller for the Cover
