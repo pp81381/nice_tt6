@@ -59,9 +59,9 @@ class CoverManager:
 
     async def add_cover(self, tt_addr: TTBusDeviceAddress, cover: Cover):
         tt6_cover = TT6Cover(tt_addr, cover, self._writer)
-        await tt6_cover.send_pos_request()
         tt6_cover.enable_notifier()
         self._tt6_covers_dict[tt_addr] = tt6_cover
+        await tt6_cover.send_pos_request()
         return tt6_cover
 
     async def remove_covers(self):
