@@ -173,8 +173,6 @@ def check_baseline_drop(
 
     if baseline_drop < min_baseline_drop or baseline_drop > max_baseline_drop:
         raise ValueError(
-            "Invalid baseline drop of %.5f - should be between %.5f and %.5f",
-            baseline_drop,
-            min_baseline_drop,
-            max_baseline_drop,
+            f"Invalid baseline drop of {baseline_drop} - "
+            f"should be between {min_baseline_drop} and {max_baseline_drop}",
         )
