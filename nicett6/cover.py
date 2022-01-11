@@ -13,7 +13,7 @@ POLLING_INTERVAL = 0.2
 class Cover(AsyncObservable):
     """A sensor class that can be used to monitor the position of a cover"""
 
-    MOVEMENT_THRESHOLD_INTERVAL = 2.0
+    MOVEMENT_THRESHOLD_INTERVAL = 2.5
     IS_CLOSED_PCT = 0.95
 
     def __init__(self, name, max_drop):
