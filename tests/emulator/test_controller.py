@@ -181,9 +181,10 @@ class TestMovementSequences(IsolatedAsyncioTestCase):
         self.assertEqual(scaled_pct_pos, 949)
         writer2.write.assert_has_calls(
             [
+                call(EOL(b"POS # 02 04 0950 FFFF FF")),
                 call(EOL(b"POS * 02 04 0972 FFFF FF")),
                 call(EOL(b"POS * 02 04 0949 FFFF FF")),
             ]
         )
-        self.assertEqual(writer2.drain.await_count, 2)
+        self.assertEqual(writer2.drain.await_count, 3)
         writer2.close.assert_called_once()

@@ -1,4 +1,5 @@
 import logging
+from nicett6.emulator.cover_emulator import TT6CoverEmulator
 from nicett6.ttbus_device import TTBusDeviceAddress
 from nicett6.utils import hex_arg_to_int, pct_arg_to_int
 
@@ -120,9 +121,14 @@ class LineHandler:
         await self.wrapped_writer.write_msg(msg)
 
     @classmethod
-    def fmt_pos_msg(cls, cover):
-        scaled_pct_pos = round(cover.percent_pos * 1000)
+    def fmt_pos_msg(cls, cover: TT6CoverEmulator):
+        scaled_pct_pos: int = round(cover.percent_pos * 1000)
         return f"POS * {cover.tt_addr.address:02X} {cover.tt_addr.node:02X} {scaled_pct_pos:04d} FFFF FF"
+
+    @classmethod
+    def fmt_ack_msg(cls, cover: TT6CoverEmulator, target_pct_pos: float):
+        scaled_pct_pos: int = round(target_pct_pos * 1000)
+        return f"POS # {cover.tt_addr.address:02X} {cover.tt_addr.node:02X} {scaled_pct_pos:04d} FFFF FF"
 
     async def handle_line(self, line_bytes):
         try:
@@ -201,6 +207,7 @@ class LineHandler:
             await self.write_msg(self.fmt_pos_msg(cover))
         elif cmd_char == ">":
             target_pct_pos = pct_arg_to_int(args[3]) / 1000
+            await self.write_msg(self.fmt_ack_msg(cover, target_pct_pos))
             await cover.move_to_percent_pos(target_pct_pos)
         else:
             raise ValueError(f"Invalid command character in web command: {cmd_char!r}")

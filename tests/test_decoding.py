@@ -6,6 +6,7 @@ from nicett6.decode import (
     HexPosResponse,
     InformationalResponse,
     InvalidResponseError,
+    PctAckResponse,
     PctPosResponse,
 )
 from nicett6.ttbus_device import TTBusDeviceAddress
@@ -47,6 +48,13 @@ class TestDecoding(unittest.TestCase):
         """Response for command not expecting fourth arg"""
         with self.assertRaises(InvalidResponseError):
             Decode.decode_line_bytes(b"RSP 3 4 4 7E" + self.TEST_EOL)
+
+    def test_decode_web_ack1(self):
+        """Web ack"""
+        res = Decode.decode_line_bytes(b"POS # 03 04 0500 FFFF FF" + self.TEST_EOL)
+        self.assertIsInstance(res, PctAckResponse)
+        self.assertEqual(res.tt_addr, TTBusDeviceAddress(0x03, 0x04))
+        self.assertEqual(res.pct_pos, 500)
 
     def test_decode_web_response1(self):
         """Web response"""
