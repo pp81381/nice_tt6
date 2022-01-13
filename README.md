@@ -529,6 +529,23 @@ The following examples can be used in conjunction with the [Emulator](#Emulator)
 * `example2.py` - shows how to use the [Basic Control API](#Basic-Control-API)
 * `example3.py` - shows how to use the [High Level Cover API](#High-Level-Cover-API)
 
+# Utilities
+
+## Movement Timing Logger
+
+The script `movement_timing_logger.py` can be used to see how often the controller publishes POS messages as it moves.   It will move the specified Cover down and then back up and log the time between messages.   This can be used to tune `Cover.MOVEMENT_THRESHOLD_INTERVAL` so that `Cover.is_moving` is accurate.
+
+```
+usage: movement_timing_logger.py [-h] [-s SERIAL_PORT] [-a {2,3}]
+
+optional arguments:
+  -h, --help            show this help message and exit
+  -s SERIAL_PORT, --serial_port SERIAL_PORT
+                        serial port
+  -a {2,3}, --address {2,3}
+                        device address
+```
+
 # Notes
 
 ## End of Line (EOL) characters
