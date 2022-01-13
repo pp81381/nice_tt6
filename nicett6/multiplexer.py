@@ -93,7 +93,7 @@ class MultiplexerProtocol(asyncio.Protocol):
     def data_received(self, chunk):
         messages = self.buf.append_chunk(chunk)
         for msg in messages:
-            _LOGGER.info(f"data_received: {msg!r}")
+            _LOGGER.debug(f"data_received: %r", msg)
             for r in self.readers:
                 r.message_received(msg)
 
