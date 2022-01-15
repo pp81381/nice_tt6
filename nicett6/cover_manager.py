@@ -60,9 +60,9 @@ class CoverManager:
             await cover.set_target_drop_pct_hint(msg.pct_pos / 1000.0)
         elif isinstance(msg, AckResponse):
             if msg.cmd_code == CMD_MOVE_UP:
-                await cover.set_target_drop_pct_hint(1.0)
+                await cover.set_closing()
             elif msg.cmd_code == CMD_MOVE_DOWN:
-                await cover.set_target_drop_pct_hint(0.0)
+                await cover.set_opening()
             elif msg.cmd_code == CMD_STOP:
                 await cover.set_idle()
         elif isinstance(msg, HexPosResponse):
