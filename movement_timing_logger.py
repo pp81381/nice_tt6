@@ -13,16 +13,29 @@ _LOGGER = logging.getLogger(__name__)
 
 class TimeTracker:
     def __init__(self):
-        self.start = datetime.now()
-        self.prior = self.start
+        self.start_time = datetime.now()
+        self.prior_time = self.start_time
+        self.prior_pct_pos = None
         _LOGGER.info("TimeTracker Started")
 
-    def update(self):
-        current = datetime.now()
-        delta_start = current - self.start
-        delta_prior = current - self.prior
-        _LOGGER.info(f"Delta Start: {delta_start}, Delta Prior: {delta_prior}")
-        self.prior = current
+    def update(self, current_pct_pos: float):
+        current_time = datetime.now()
+        delta_start_time = current_time - self.start_time
+        delta_prior_time = current_time - self.prior_time
+        if self.prior_pct_pos is not None:
+            delta_prior_pct_pos = current_pct_pos - self.prior_pct_pos
+            period_pct_per_sec = delta_prior_pct_pos / delta_prior_time.total_seconds()
+        else:
+            delta_prior_pct_pos = None
+            period_pct_per_sec = None
+        _LOGGER.info(
+            f"Delta Start Time: {delta_start_time}, "
+            f"Delta Prior Time: {delta_prior_time}, "
+            f"Delta Prior Pct Pos: {delta_prior_pct_pos}, "
+            f"Period Pct Per Sec: {period_pct_per_sec}"
+        )
+        self.prior_time = current_time
+        self.prior_pct_pos = current_pct_pos
 
 
 class MessageHandler:
@@ -38,7 +51,7 @@ class MessageHandler:
         elif isinstance(msg, PctPosResponse):
             self.prev_movement = datetime.now()
             if self.tt is not None:
-                self.tt.update()
+                self.tt.update(msg.pct_pos)
             else:
                 _LOGGER.warning(f"Pos message received without initial Ack: {msg!r}")
 
