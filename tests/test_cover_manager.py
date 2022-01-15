@@ -1,7 +1,8 @@
 import asyncio
-from nicett6.decode import PctAckResponse, PctPosResponse
+from nicett6.decode import AckResponse, HexPosResponse, PctAckResponse, PctPosResponse
 from nicett6.cover_manager import CoverManager
 from nicett6.cover import Cover
+from nicett6.emulator.line_handler import CMD_MOVE_DOWN, CMD_MOVE_POS, CMD_MOVE_UP
 from nicett6.ttbus_device import TTBusDeviceAddress
 from unittest import IsolatedAsyncioTestCase
 from unittest.mock import AsyncMock, MagicMock, patch
@@ -171,3 +172,31 @@ class TestCoverManagerMessageTracker(IsolatedAsyncioTestCase):
         )
         await self.mgr.message_tracker()
         self.cover.set_target_drop_pct_hint.awaited_once_with(self.tt_addr, 0.5)
+
+    async def test3(self):
+        self.mgr._message_tracker_reader = AsyncMock(
+            return_value=[AckResponse(self.tt_addr, CMD_MOVE_UP)]
+        )
+        await self.mgr.message_tracker()
+        self.cover.set_target_drop_pct_hint.awaited_once_with(self.tt_addr, 1.0)
+
+    async def test4(self):
+        self.mgr._message_tracker_reader = AsyncMock(
+            return_value=[AckResponse(self.tt_addr, CMD_MOVE_DOWN)]
+        )
+        await self.mgr.message_tracker()
+        self.cover.set_target_drop_pct_hint.awaited_once_with(self.tt_addr, 0.0)
+
+    async def test5(self):
+        self.mgr._message_tracker_reader = AsyncMock(
+            return_value=[HexPosResponse(self.tt_addr, CMD_MOVE_POS, 0x00)]
+        )
+        await self.mgr.message_tracker()
+        self.cover.set_target_drop_pct_hint.awaited_once_with(self.tt_addr, 0.0)
+
+    async def test6(self):
+        self.mgr._message_tracker_reader = AsyncMock(
+            return_value=[HexPosResponse(self.tt_addr, CMD_MOVE_POS, 0xFF)]
+        )
+        await self.mgr.message_tracker()
+        self.cover.set_target_drop_pct_hint.awaited_once_with(self.tt_addr, 1.0)

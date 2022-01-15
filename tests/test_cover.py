@@ -189,7 +189,7 @@ class TestCover(IsolatedAsyncioTestCase):
         self.assertFalse(self.cover.is_moving)
         self.assertFalse(self.cover.is_opening)
         self.assertFalse(self.cover.is_closing)
-        await self.cover.idle()
+        await self.cover.set_idle()
         self.assertAlmostEqual(self.cover._prev_drop_pct, 0.8)  # !!
         self.assertFalse(self.cover.is_closed)
         self.assertFalse(self.cover.is_moving)

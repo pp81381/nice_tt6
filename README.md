@@ -294,8 +294,8 @@ Method|Description
 --|--
 `Cover.set_drop_pct`|Set the percentage drop (0.0 = fully open/down, 1.0 = fully closed/up) - async<br>Will notify observers of the state change
 `Cover.moved()`|Called to indicate movement<br>When initiating movement, call `moved()` so that `is_moving` will be meaningful in the interval before the first POS message comes back from the cover<br>Will notify observers of the state change
-`Cover.idle()`|Called to indicate that the cover is idle<br>After detecting that the cover is idle, call `idle()` so that the next movement direction will be correctly inferred<br>Will notify observers of the state change
-`Cover.check_for_idle()`|Called to check whether movement has ceased<br>Returns True if the cover is idle<br>Will invoke Cover.idle() if the cover became idle since the last call
+`Cover.set_idle()`|Called to indicate that the cover is idle<br>After detecting that the cover is idle, call `set_idle()` so that the next movement direction will be correctly inferred<br>Will notify observers of the state change
+`Cover.check_for_idle()`|Called to check whether movement has ceased<br>Returns True if the cover is idle<br>Will invoke Cover.set_idle() if the cover became idle since the last call
 
 Helper|Description
 --|--
@@ -329,7 +329,7 @@ Helper class that resets a cover to idle after movement has stopped
 
 Documented here for completeness but intended to be constructed by and internal to the `CoverManager`
 
-Most state changes of a `Cover` will be triggered by the receipt of a POS message.  The `Cover` infers that there is movement when a message is received and infers the direction from the current and previous message.   However, there is no notification that the `Cover` is idle so the `PostMovementNotifier` class detects that there has been no movement for a period and then calls `Cover.idle()`.  The `Cover` will then notify its observers that it is idle.
+Most state changes of a `Cover` will be triggered by the receipt of a POS message.  The `Cover` infers that there is movement when a message is received and infers the direction from the current and previous message.   However, there is no notification that the `Cover` is idle so the `PostMovementNotifier` class detects that there has been no movement for a period and then calls `Cover.set_idle()`.  The `Cover` will then notify its observers that it is idle.
 
 The class implements the `AsyncObserver` interface and is intended to be attached to a `Cover`.  Whenever the `Cover` moves it calls `notifyObservers()` which calls `PostMovementNotifier.update()`.  A task is created that will wait for a period and then set the `Cover` to idle.   If a task was already running when the movement notification is received then the task will be cancelled and restarted.
 

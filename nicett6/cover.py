@@ -77,7 +77,7 @@ class Cover(AsyncObservable):
             self._was_moving = True
         elif self._was_moving:
             self._was_moving = False
-            await self.idle()
+            await self.set_idle()
         return not self._was_moving
 
     @property
@@ -215,11 +215,11 @@ class PostMovementNotifier(AsyncObserver):
                 self._task = asyncio.create_task(self._set_idle_after_delay(cover))
                 cover.log("PostMovementNotifier task started", logging.DEBUG)
 
-    async def _set_idle_after_delay(self, cover):
+    async def _set_idle_after_delay(self, cover: Cover):
         await asyncio.sleep(
             cover.MOVEMENT_THRESHOLD_INTERVAL + self.POST_MOVEMENT_ALLOWANCE
         )
-        await cover.idle()
+        await cover.set_idle()
         cover.log("PostMovementNotifier sent idle", logging.DEBUG)
 
     async def cleanup(self):

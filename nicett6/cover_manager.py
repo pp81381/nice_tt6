@@ -1,7 +1,13 @@
 import logging
 from nicett6.connection import TT6Connection, TT6Writer, TT6Reader
 from nicett6.cover import Cover, TT6Cover
-from nicett6.decode import PctAckResponse, PctPosResponse
+from nicett6.decode import AckResponse, HexPosResponse, PctAckResponse, PctPosResponse
+from nicett6.emulator.line_handler import (
+    CMD_MOVE_DOWN,
+    CMD_MOVE_POS,
+    CMD_MOVE_UP,
+    CMD_STOP,
+)
 from nicett6.ttbus_device import TTBusDeviceAddress
 
 _LOGGER = logging.getLogger(__name__)
@@ -47,18 +53,36 @@ class CoverManager:
         self._conn.close()
         self._conn = None
 
+    async def _handle_response_message_for_cover(self, msg, cover: Cover):
+        if isinstance(msg, PctPosResponse):
+            await cover.set_drop_pct(msg.pct_pos / 1000.0)
+        elif isinstance(msg, PctAckResponse):
+            await cover.set_target_drop_pct_hint(msg.pct_pos / 1000.0)
+        elif isinstance(msg, AckResponse):
+            if msg.cmd_code == CMD_MOVE_UP:
+                await cover.set_target_drop_pct_hint(1.0)
+            elif msg.cmd_code == CMD_MOVE_DOWN:
+                await cover.set_target_drop_pct_hint(0.0)
+            elif msg.cmd_code == CMD_STOP:
+                await cover.set_idle()
+        elif isinstance(msg, HexPosResponse):
+            if msg.cmd_code == CMD_MOVE_POS:
+                await cover.set_target_drop_pct_hint(msg.hex_pos / 255.0)
+
+    async def _handle_response_message(self, msg):
+        if hasattr(msg, "tt_addr"):
+            try:
+                tt6_cover: TT6Cover = self._tt6_covers_dict[msg.tt_addr]
+            except KeyError:
+                _LOGGER.warning("response message addressed to unknown device: %s", msg)
+                return
+            await self._handle_response_message_for_cover(msg, tt6_cover.cover)
+
     async def message_tracker(self):
         _LOGGER.debug("message_tracker started")
         async for msg in self._message_tracker_reader:
-            _LOGGER.debug(f"msg:{msg}")
-            if isinstance(msg, PctPosResponse):
-                if msg.tt_addr in self._tt6_covers_dict:
-                    tt6_cover = self._tt6_covers_dict[msg.tt_addr]
-                    await tt6_cover.cover.set_drop_pct(msg.pct_pos / 1000.0)
-            elif isinstance(msg, PctAckResponse):
-                if msg.tt_addr in self._tt6_covers_dict:
-                    tt6_cover = self._tt6_covers_dict[msg.tt_addr]
-                    await tt6_cover.cover.set_target_drop_pct_hint(msg.pct_pos / 1000.0)
+            _LOGGER.debug("msg:%s", msg)
+            await self._handle_response_message(msg)
         _LOGGER.debug("message tracker finished")
 
     async def add_cover(self, tt_addr: TTBusDeviceAddress, cover: Cover):
