@@ -300,4 +300,4 @@ class TestCoverWriter(IsolatedAsyncioTestCase):
         self.assertEqual(self.cover.is_moving, True)
         await self.cw.send_stop_command()
         self.writer.send_simple_command.assert_awaited_with(self.tt_addr, "STOP")
-        self.assertEqual(self.cover.is_moving, True)  # Not affected
+        self.assertEqual(self.cover.is_moving, False)

@@ -68,6 +68,7 @@ class Cover(AsyncObservable):
     async def set_idle(self):
         """Called to indicate that movement has finished"""
         self._prev_drop_pct = self._drop_pct
+        self._prev_movement = time.perf_counter() - self.MOVEMENT_THRESHOLD_INTERVAL
         await self.notify_observers()
 
     @property
