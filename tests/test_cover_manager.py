@@ -11,7 +11,7 @@ def make_mock_conn():
     mock_reader = AsyncMock(name="reader")
     mock_reader.__aiter__.return_value = [
         PctPosResponse(TTBusDeviceAddress(0x02, 0x04), 110),
-        PctPosResponse(TTBusDeviceAddress(0x03, 0x04), 539),  # Ignored
+        PctPosResponse(TTBusDeviceAddress(0x03, 0x04), 539),  # Address 0x03 Ignored
     ]
     conn = AsyncMock()
     conn.add_reader = MagicMock(return_value=mock_reader)
