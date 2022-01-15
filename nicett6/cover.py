@@ -118,6 +118,23 @@ class Cover(AsyncObservable):
         """
         return self.is_moving and self._drop_pct < self._prev_drop_pct
 
+    async def set_closing(self):
+        """Force the state to is_closing"""
+        self._prev_drop_pct = self._drop_pct - 0.0001
+        await self.moved()
+
+    async def set_opening(self):
+        """Force the state to is_opening"""
+        self._prev_drop_pct = self._drop_pct + 0.0001
+        await self.moved()
+
+    async def set_target_drop_pct_hint(self, target_drop_pct):
+        """"Force the state to is_opening/closing based on target drop_pct"""
+        if target_drop_pct < self._drop_pct:
+            await self.set_opening()
+        elif target_drop_pct > self._drop_pct:
+            await self.set_closing()
+
 
 class TT6Cover:
     """Class that sends commands to a `Cover` that is connected to the TTBus"""

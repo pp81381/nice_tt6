@@ -1,7 +1,7 @@
 import logging
 from nicett6.connection import TT6Connection, TT6Writer, TT6Reader
 from nicett6.cover import Cover, TT6Cover
-from nicett6.decode import PctPosResponse
+from nicett6.decode import PctAckResponse, PctPosResponse
 from nicett6.ttbus_device import TTBusDeviceAddress
 
 _LOGGER = logging.getLogger(__name__)
@@ -55,6 +55,10 @@ class CoverManager:
                 if msg.tt_addr in self._tt6_covers_dict:
                     tt6_cover = self._tt6_covers_dict[msg.tt_addr]
                     await tt6_cover.cover.set_drop_pct(msg.pct_pos / 1000.0)
+            elif isinstance(msg, PctAckResponse):
+                if msg.tt_addr in self._tt6_covers_dict:
+                    tt6_cover = self._tt6_covers_dict[msg.tt_addr]
+                    await tt6_cover.cover.set_target_drop_pct_hint(msg.pct_pos / 1000.0)
         _LOGGER.debug("message tracker finished")
 
     async def add_cover(self, tt_addr: TTBusDeviceAddress, cover: Cover):

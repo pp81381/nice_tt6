@@ -202,6 +202,52 @@ class TestCover(IsolatedAsyncioTestCase):
         self.assertFalse(self.cover.is_opening)
         self.assertFalse(self.cover.is_closing)
 
+    async def test11(self):
+        self.assertTrue(self.cover.is_closed)
+        self.assertFalse(self.cover.is_moving)
+        self.assertFalse(self.cover.is_opening)
+        self.assertFalse(self.cover.is_closing)
+        await self.cover.set_closing()
+        self.assertFalse(self.cover.is_closed)
+        self.assertTrue(self.cover.is_moving)
+        self.assertFalse(self.cover.is_opening)
+        self.assertTrue(self.cover.is_closing)
+
+    async def test12(self):
+        self.assertTrue(self.cover.is_closed)
+        self.assertFalse(self.cover.is_moving)
+        self.assertFalse(self.cover.is_opening)
+        self.assertFalse(self.cover.is_closing)
+        await self.cover.set_opening()
+        self.assertFalse(self.cover.is_closed)
+        self.assertTrue(self.cover.is_moving)
+        self.assertTrue(self.cover.is_opening)
+        self.assertFalse(self.cover.is_closing)
+
+    async def test13(self):
+        self.assertTrue(self.cover.is_closed)
+        self.assertFalse(self.cover.is_moving)
+        self.assertFalse(self.cover.is_opening)
+        self.assertFalse(self.cover.is_closing)
+        await self.cover.set_target_drop_pct_hint(0.5)
+        self.assertFalse(self.cover.is_closed)
+        self.assertTrue(self.cover.is_moving)
+        self.assertTrue(self.cover.is_opening)
+        self.assertFalse(self.cover.is_closing)
+
+    async def test14(self):
+        await self.cover.set_drop_pct(0.0)
+        await asyncio.sleep(self.cover.MOVEMENT_THRESHOLD_INTERVAL + 0.01)
+        self.assertFalse(self.cover.is_closed)
+        self.assertFalse(self.cover.is_moving)
+        self.assertFalse(self.cover.is_opening)
+        self.assertFalse(self.cover.is_closing)
+        await self.cover.set_target_drop_pct_hint(0.5)
+        self.assertFalse(self.cover.is_closed)
+        self.assertTrue(self.cover.is_moving)
+        self.assertFalse(self.cover.is_opening)
+        self.assertTrue(self.cover.is_closing)
+
 
 class TestCoverWriter(IsolatedAsyncioTestCase):
     def setUp(self):

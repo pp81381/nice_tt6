@@ -1,18 +1,20 @@
 import asyncio
-from nicett6.decode import PctPosResponse
+from nicett6.decode import PctAckResponse, PctPosResponse
 from nicett6.cover_manager import CoverManager
 from nicett6.cover import Cover
 from nicett6.ttbus_device import TTBusDeviceAddress
 from unittest import IsolatedAsyncioTestCase
 from unittest.mock import AsyncMock, MagicMock, patch
 
+TEST_READER_POS_RESPONSE = [
+    PctPosResponse(TTBusDeviceAddress(0x02, 0x04), 110),
+    PctPosResponse(TTBusDeviceAddress(0x03, 0x04), 539),  # Address 0x03 Ignored
+]
 
-def make_mock_conn():
+
+def make_mock_conn(reader_return_value):
     mock_reader = AsyncMock(name="reader")
-    mock_reader.__aiter__.return_value = [
-        PctPosResponse(TTBusDeviceAddress(0x02, 0x04), 110),
-        PctPosResponse(TTBusDeviceAddress(0x03, 0x04), 539),  # Address 0x03 Ignored
-    ]
+    mock_reader.__aiter__.return_value = reader_return_value
     conn = AsyncMock()
     conn.add_reader = MagicMock(return_value=mock_reader)
     conn.get_writer = MagicMock(return_value=AsyncMock(name="writer"))
@@ -22,7 +24,7 @@ def make_mock_conn():
 
 class TestCoverManagerOpen(IsolatedAsyncioTestCase):
     async def test1(self):
-        conn = make_mock_conn()
+        conn = make_mock_conn(TEST_READER_POS_RESPONSE)
         with patch(
             "nicett6.cover_manager.TT6Connection",
             return_value=conn,
@@ -35,7 +37,7 @@ class TestCoverManagerOpen(IsolatedAsyncioTestCase):
 
 class TestCoverManager(IsolatedAsyncioTestCase):
     def setUp(self):
-        self.conn = make_mock_conn()
+        self.conn = make_mock_conn(TEST_READER_POS_RESPONSE)
         patcher = patch(
             "nicett6.cover_manager.TT6Connection",
             return_value=self.conn,
@@ -124,7 +126,7 @@ class TestCoverManager(IsolatedAsyncioTestCase):
 
 class TestCoverManagerContextManager(IsolatedAsyncioTestCase):
     def setUp(self):
-        self.conn = make_mock_conn()
+        self.conn = make_mock_conn(TEST_READER_POS_RESPONSE)
         patcher = patch(
             "nicett6.cover_manager.TT6Connection",
             return_value=self.conn,
@@ -145,3 +147,27 @@ class TestCoverManagerContextManager(IsolatedAsyncioTestCase):
             writer.send_simple_command.assert_awaited_with(self.tt_addr, "MOVE_DOWN"),
             self.conn.close.assert_not_called()
         self.conn.close.assert_called_once()
+
+
+class TestCoverManagerMessageTracker(IsolatedAsyncioTestCase):
+    async def asyncSetUp(self):
+        self.tt_addr = TTBusDeviceAddress(0x02, 0x04)
+        self.cover = AsyncMock()
+        self.tt6_cover = AsyncMock()
+        self.tt6_cover.cover = self.cover
+        self.mgr = CoverManager("DUMMY_SERIAL_PORT")
+        self.mgr._tt6_covers_dict[self.tt_addr] = self.tt6_cover
+
+    async def test1(self):
+        self.mgr._message_tracker_reader = AsyncMock(
+            return_value=[PctPosResponse(self.tt_addr, 250)]
+        )
+        await self.mgr.message_tracker()
+        self.cover.set_drop_pct.awaited_once_with(self.tt_addr, 0.25)
+
+    async def test2(self):
+        self.mgr._message_tracker_reader = AsyncMock(
+            return_value=[PctAckResponse(self.tt_addr, 500)]
+        )
+        await self.mgr.message_tracker()
+        self.cover.set_target_drop_pct_hint.awaited_once_with(self.tt_addr, 0.5)
