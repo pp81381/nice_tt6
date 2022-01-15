@@ -22,7 +22,6 @@ class Cover(AsyncObservable):
         self.max_drop = max_drop
         self._drop_pct = 1.0
         self._prev_movement = time.perf_counter() - self.MOVEMENT_THRESHOLD_INTERVAL
-        self._was_moving = False
         self._prev_drop_pct = self._drop_pct
 
     def __repr__(self):
@@ -70,15 +69,6 @@ class Cover(AsyncObservable):
         """Called to indicate that movement has finished"""
         self._prev_drop_pct = self._drop_pct
         await self.notify_observers()
-
-    async def check_for_idle(self):
-        """Used to notify observers that movement has completed"""
-        if self.is_moving:
-            self._was_moving = True
-        elif self._was_moving:
-            self._was_moving = False
-            await self.set_idle()
-        return not self._was_moving
 
     @property
     def is_moving(self):
@@ -184,6 +174,30 @@ class TT6Cover:
         await self.cover.moved()
 
 
+class CoverIdleChecker:
+    def __init__(self, cover: Cover):
+        self.cover = cover
+        self._was_moving = cover.is_moving
+
+    async def check_for_idle(self):
+        """
+        Called to check whether movement has ceased
+
+        Returns True if the cover is idle
+        Will invoke Cover.set_idle() if the cover became idle since the last call
+        which in turn will notify observers of the cover that it is now idle
+        """
+        if self.cover.is_moving:
+            self._was_moving = True
+            return False
+        elif not self._was_moving:
+            return True
+        else:  # was moving and now isn't
+            self._was_moving = False
+            await self.cover.set_idle()
+            return True
+
+
 async def wait_for_motion_to_complete(covers):
     """
     Poll for motion to complete
@@ -192,9 +206,10 @@ async def wait_for_motion_to_complete(covers):
     is initiated for this method to work reliably (see CoverWriter)
     Has the side effect of notifying observers of the idle state
     """
+    checkers = [CoverIdleChecker(cover) for cover in covers]
     while True:
         await asyncio.sleep(POLLING_INTERVAL)
-        if all([await cover.check_for_idle() for cover in covers]):
+        if all([await checker.check_for_idle() for checker in checkers]):
             return
 
 
