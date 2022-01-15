@@ -171,7 +171,7 @@ class TT6Cover:
     async def send_stop_command(self):
         _LOGGER.debug(f"sending STOP to {self.cover.name}")
         await self.writer.send_simple_command(self.tt_addr, "STOP")
-        await self.cover.moved()
+        await self.cover.set_idle()
 
 
 class CoverIdleChecker:
@@ -224,9 +224,10 @@ class PostMovementNotifier(AsyncObserver):
         self._task = None
 
     async def update(self, cover: Cover) -> None:
-        if cover.is_moving:  # Avoid recursion
-            async with self._task_lock:
-                await self._cancel_task()
+        """Reset the task if the state of the Cover changes"""
+        async with self._task_lock:
+            await self._cancel_task()
+            if cover.is_moving:  # Only need a new task if moving, plus avoid recursion
                 self._task = asyncio.create_task(self._set_idle_after_delay(cover))
                 cover.log("PostMovementNotifier task started", logging.DEBUG)
 
@@ -246,9 +247,7 @@ class PostMovementNotifier(AsyncObserver):
         """Cancel task - make sure you have acquired the lock first"""
         if self._task is not None:
             if not self._task.done():
-                _LOGGER.debug(
-                    f"PostMovementNotifier _cancel_task called with an active task"
-                )
+                _LOGGER.debug(f"PostMovementNotifier cancelling an active task")
                 self._task.cancel()
                 try:
                     await self._task
