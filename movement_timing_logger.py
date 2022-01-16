@@ -3,7 +3,7 @@ import asyncio
 from datetime import datetime, timedelta
 import logging
 from nicett6.connection import TT6Reader
-from nicett6.cover import Cover, wait_for_motion_to_complete
+from nicett6.cover import Cover
 from nicett6.cover_manager import CoverManager
 from nicett6.decode import PctAckResponse, PctPosResponse
 from nicett6.ttbus_device import TTBusDeviceAddress
