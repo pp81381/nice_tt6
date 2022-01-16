@@ -153,13 +153,11 @@ class TT6Cover:
 
     async def send_close_command(self):
         _LOGGER.debug(f"sending MOVE_UP to {self.cover.name}")
-        # Could also be implemented by setting drop_pct to 1.0
         await self.writer.send_simple_command(self.tt_addr, "MOVE_UP")
         await self.cover.moved()
 
     async def send_open_command(self):
         _LOGGER.debug(f"sending MOVE_DOWN to {self.cover.name}")
-        # Could also be implemented by setting drop_pct to 0.0
         await self.writer.send_simple_command(self.tt_addr, "MOVE_DOWN")
         await self.cover.moved()
 
@@ -172,31 +170,6 @@ class TT6Cover:
     async def send_stop_command(self):
         _LOGGER.debug(f"sending STOP to {self.cover.name}")
         await self.writer.send_simple_command(self.tt_addr, "STOP")
-        await self.cover.set_idle()
-
-
-class CoverIdleChecker:
-    def __init__(self, cover: Cover):
-        self.cover = cover
-        self._was_moving = cover.is_moving
-
-    async def check_for_idle(self):
-        """
-        Called to check whether movement has ceased
-
-        Returns True if the cover is idle
-        Will invoke Cover.set_idle() if the cover became idle since the last call
-        which in turn will notify observers of the cover that it is now idle
-        """
-        if self.cover.is_moving:
-            self._was_moving = True
-            return False
-        elif not self._was_moving:
-            return True
-        else:  # was moving and now isn't
-            self._was_moving = False
-            await self.cover.set_idle()
-            return True
 
 
 async def wait_for_motion_to_complete(covers):
@@ -204,13 +177,13 @@ async def wait_for_motion_to_complete(covers):
     Poll for motion to complete
 
     Make sure that Cover.moving() is called when movement
-    is initiated for this method to work reliably (see CoverWriter)
+    is initiated for this method to work reliably
+    (see CoverManager._handle_response_message_for_cover)
     Has the side effect of notifying observers of the idle state
     """
-    checkers = [CoverIdleChecker(cover) for cover in covers]
     while True:
         await asyncio.sleep(POLLING_INTERVAL)
-        if all([await checker.check_for_idle() for checker in checkers]):
+        if all([not cover.is_moving for cover in covers]):
             return
 
 

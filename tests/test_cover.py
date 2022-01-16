@@ -1,20 +1,8 @@
 import asyncio
+from unittest.mock import AsyncMock
 from nicett6.ttbus_device import TTBusDeviceAddress
 from unittest import IsolatedAsyncioTestCase
-from nicett6.cover import (
-    Cover,
-    CoverIdleChecker,
-    TT6Cover,
-    POLLING_INTERVAL,
-    wait_for_motion_to_complete,
-)
-from unittest.mock import AsyncMock, patch
-
-
-async def cleanup_task(task):
-    if not task.done():
-        task.cancel()
-    await task
+from nicett6.cover import Cover, TT6Cover, wait_for_motion_to_complete
 
 
 class TestCover(IsolatedAsyncioTestCase):
@@ -129,57 +117,12 @@ class TestCover(IsolatedAsyncioTestCase):
                 self.assertEqual(self.cover.is_opening, is_opening)
                 self.assertEqual(self.cover.is_closing, is_closing)
 
-    async def test9(self):
-        with patch("nicett6.cover.Cover.notify_observers") as p:
-            checker = CoverIdleChecker(self.cover)
-            self.assertTrue(await checker.check_for_idle())
-            p.assert_not_awaited()
-            await self.cover.set_drop_pct(0.9)
-            p.assert_awaited_once()
-            p.reset_mock()
-            self.assertFalse(await checker.check_for_idle())
-            p.assert_not_awaited()
-            await asyncio.sleep(self.cover.MOVEMENT_THRESHOLD_INTERVAL + 0.1)
-            self.assertTrue(await checker.check_for_idle())
-            p.assert_awaited_once()
-
-    async def test9a(self):
-        checker = CoverIdleChecker(self.cover)
+    async def test_wait_for_motion_to_complete(self):
         self.assertFalse(self.cover.is_moving)
-        self.assertTrue(await checker.check_for_idle())
-        task = asyncio.create_task(wait_for_motion_to_complete([self.cover]))
-        self.addAsyncCleanup(cleanup_task, task)
-        self.assertFalse(task.done())
-        await asyncio.sleep(POLLING_INTERVAL + 0.1)
-        self.assertTrue(task.done())
-        await task
-        self.assertTrue(await checker.check_for_idle())
-
-    async def test9b(self):
-        checker = CoverIdleChecker(self.cover)
-        self.assertTrue(await checker.check_for_idle())
         await self.cover.moved()
-        self.assertFalse(await checker.check_for_idle())
-
-        task = asyncio.create_task(wait_for_motion_to_complete([self.cover]))
-        self.addAsyncCleanup(cleanup_task, task)
-
         self.assertTrue(self.cover.is_moving)
-        self.assertFalse(await checker.check_for_idle())
-        self.assertFalse(task.done())
-
-        await asyncio.sleep(POLLING_INTERVAL + 0.1)
-
-        self.assertTrue(self.cover.is_moving)
-        self.assertFalse(await checker.check_for_idle())
-        self.assertFalse(task.done())
-
-        await asyncio.sleep(Cover.MOVEMENT_THRESHOLD_INTERVAL)
-
+        await wait_for_motion_to_complete([self.cover])
         self.assertFalse(self.cover.is_moving)
-        self.assertTrue(await checker.check_for_idle())
-        self.assertTrue(task.done())
-        await task
 
     async def test10(self):
         self.assertTrue(self.cover.is_closed)
@@ -258,7 +201,7 @@ class TestCover(IsolatedAsyncioTestCase):
         self.assertTrue(self.cover.is_closing)
 
 
-class TestCoverWriter(IsolatedAsyncioTestCase):
+class TestTT6Cover(IsolatedAsyncioTestCase):
     def setUp(self):
         self.tt_addr = TTBusDeviceAddress(0x02, 0x04)
         self.cover = Cover("test", 2.0)
@@ -300,4 +243,6 @@ class TestCoverWriter(IsolatedAsyncioTestCase):
         self.assertEqual(self.cover.is_moving, True)
         await self.cw.send_stop_command()
         self.writer.send_simple_command.assert_awaited_with(self.tt_addr, "STOP")
+        self.assertEqual(self.cover.is_moving, True)
+        await asyncio.sleep(Cover.MOVEMENT_THRESHOLD_INTERVAL + 0.01)
         self.assertEqual(self.cover.is_moving, False)
