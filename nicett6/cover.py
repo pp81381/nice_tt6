@@ -149,23 +149,19 @@ class TT6Cover:
     async def send_drop_pct_command(self, drop_pct):
         _LOGGER.debug(f"moving {self.cover.name} to {drop_pct}")
         await self.writer.send_web_move_command(self.tt_addr, drop_pct)
-        await self.cover.moved()
 
     async def send_close_command(self):
         _LOGGER.debug(f"sending MOVE_UP to {self.cover.name}")
         await self.writer.send_simple_command(self.tt_addr, "MOVE_UP")
-        await self.cover.moved()
 
     async def send_open_command(self):
         _LOGGER.debug(f"sending MOVE_DOWN to {self.cover.name}")
         await self.writer.send_simple_command(self.tt_addr, "MOVE_DOWN")
-        await self.cover.moved()
 
     async def send_preset_command(self, preset_num: int):
         preset_command = f"MOVE_POS_{preset_num:d}"
         _LOGGER.debug(f"sending {preset_command} to {self.cover.name}")
         await self.writer.send_simple_command(self.tt_addr, preset_command)
-        await self.cover.moved()
 
     async def send_stop_command(self):
         _LOGGER.debug(f"sending STOP to {self.cover.name}")
