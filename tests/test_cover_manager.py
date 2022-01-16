@@ -1,7 +1,7 @@
 import asyncio
 from nicett6.decode import AckResponse, HexPosResponse, PctAckResponse, PctPosResponse
 from nicett6.cover_manager import CoverManager
-from nicett6.cover import Cover
+from nicett6.cover import Cover, PostMovementNotifier
 from nicett6.emulator.line_handler import CMD_MOVE_DOWN, CMD_MOVE_POS, CMD_MOVE_UP
 from nicett6.ttbus_device import TTBusDeviceAddress
 from unittest import IsolatedAsyncioTestCase
@@ -103,7 +103,7 @@ class TestCoverManager(IsolatedAsyncioTestCase):
         self.assertFalse(self.tt6_cover._notifier._task.done())
 
         # wait for motion to to complete but task still running
-        await asyncio.sleep(self.cover.MOVEMENT_THRESHOLD_INTERVAL + 0.01)
+        await asyncio.sleep(Cover.MOVEMENT_THRESHOLD_INTERVAL + 0.01)
         self.assertAlmostEqual(
             self.cover._prev_drop_pct, 1.0
         )  # set_idle() not called yet
@@ -115,7 +115,7 @@ class TestCoverManager(IsolatedAsyncioTestCase):
         self.assertFalse(self.tt6_cover._notifier._task.done())
 
         # wait for notifier task to complete
-        await asyncio.sleep(self.tt6_cover._notifier.POST_MOVEMENT_ALLOWANCE + 0.01)
+        await asyncio.sleep(PostMovementNotifier.POST_MOVEMENT_ALLOWANCE + 0.02)
         self.assertAlmostEqual(self.cover._prev_drop_pct, 0.8)  # set_idle() called
         self.assertFalse(self.cover.is_closed)
         self.assertFalse(self.cover.is_moving)
