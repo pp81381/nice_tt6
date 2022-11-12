@@ -119,7 +119,7 @@ class MultiplexerSerialConnection:
 
     async def open(self, eol, **kwargs):
         assert not self.is_open
-        loop = asyncio.get_event_loop()
+        loop = asyncio.get_running_loop()
         self.transport, self.protocol = await create_serial_connection(
             loop,
             lambda: MultiplexerProtocol(eol),
