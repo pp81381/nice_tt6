@@ -50,10 +50,34 @@ async def run_example_commands_screen_up(writer, screen_tt_addr, mask_tt_addr):
     _LOGGER.info("run_example_commands_screen_up completed")
 
 
+async def run_example_commands_screen_up_step(writer, screen_tt_addr, mask_tt_addr):
+    await writer.send_web_on()
+    await writer.send_simple_command(screen_tt_addr, "MOVE_UP_STEP")
+    _LOGGER.info("run_example_commands_screen_up_step completed")
+
+
+async def run_example_commands_mask_up_step(writer, screen_tt_addr, mask_tt_addr):
+    await writer.send_web_on()
+    await writer.send_simple_command(mask_tt_addr, "MOVE_UP_STEP")
+    _LOGGER.info("run_example_commands_mask_up_step completed")
+
+
 async def run_example_commands_screen_down(writer, screen_tt_addr, mask_tt_addr):
     await writer.send_web_on()
     await writer.send_simple_command(screen_tt_addr, "MOVE_DOWN")
     _LOGGER.info("run_example_commands_screen_down completed")
+
+
+async def run_example_commands_screen_down_step(writer, screen_tt_addr, mask_tt_addr):
+    await writer.send_web_on()
+    await writer.send_simple_command(screen_tt_addr, "MOVE_DOWN_STEP")
+    _LOGGER.info("run_example_commands_screen_down_step completed")
+
+
+async def run_example_commands_mask_down_step(writer, screen_tt_addr, mask_tt_addr):
+    await writer.send_web_on()
+    await writer.send_simple_command(mask_tt_addr, "MOVE_DOWN_STEP")
+    _LOGGER.info("run_example_commands_mask_down_step completed")
 
 
 async def request_screen_position(writer, tt_addr):
@@ -97,6 +121,10 @@ if __name__ == "__main__":
         ("ex3", run_example_commands3),
         ("up", run_example_commands_screen_up),
         ("down", run_example_commands_screen_down),
+        ("up_step", run_example_commands_screen_up_step),
+        ("down_step", run_example_commands_screen_down_step),
+        ("mask_up_step", run_example_commands_mask_up_step),
+        ("mask_down_step", run_example_commands_mask_down_step),
     )
     serial_port, example = parse_example_args(examples)
     asyncio.run(main(serial_port, example))
