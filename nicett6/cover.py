@@ -150,6 +150,10 @@ class TT6Cover:
         _LOGGER.debug(f"moving {self.cover.name} to {drop_pct}")
         await self.writer.send_web_move_command(self.tt_addr, drop_pct)
 
+    async def send_hex_move_command(self, hex_pos: int):
+        _LOGGER.debug(f"moving {self.cover.name} to hex pos {hex_pos}")
+        await self.writer.send_hex_move_command(self.tt_addr, hex_pos)
+
     async def send_close_command(self):
         _LOGGER.debug(f"sending MOVE_UP to {self.cover.name}")
         await self.writer.send_simple_command(self.tt_addr, "MOVE_UP")
