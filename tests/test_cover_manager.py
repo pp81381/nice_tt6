@@ -19,6 +19,7 @@ def make_mock_conn(reader_return_value):
     conn = AsyncMock()
     conn.add_reader = MagicMock(return_value=mock_reader)
     conn.get_writer = MagicMock(return_value=AsyncMock(name="writer"))
+    conn.remove_reader = MagicMock()
     conn.close = MagicMock()
     return conn
 
@@ -169,43 +170,49 @@ class TestCoverManagerMessageTracker(IsolatedAsyncioTestCase):
         self.mgr._tt6_covers_dict[self.tt_addr] = self.tt6_cover
 
     async def test1(self):
-        self.mgr._message_tracker_reader = AsyncMock(
-            return_value=[PctPosResponse(self.tt_addr, 250)]
-        )
+        self.mgr._message_tracker_reader = MagicMock()
+        self.mgr._message_tracker_reader.__aiter__.return_value = [
+            PctPosResponse(self.tt_addr, 250)
+        ]
         await self.mgr.message_tracker()
-        self.cover.set_drop_pct.awaited_once_with(self.tt_addr, 0.25)
+        self.cover.set_drop_pct.assert_awaited_once_with(0.25)
 
     async def test2(self):
-        self.mgr._message_tracker_reader = AsyncMock(
-            return_value=[PctAckResponse(self.tt_addr, 500)]
-        )
+        self.mgr._message_tracker_reader = MagicMock()
+        self.mgr._message_tracker_reader.__aiter__.return_value = [
+            PctAckResponse(self.tt_addr, 500)
+        ]
         await self.mgr.message_tracker()
-        self.cover.set_target_drop_pct_hint.awaited_once_with(self.tt_addr, 0.5)
+        self.cover.set_target_drop_pct_hint.assert_awaited_once_with(0.5)
 
     async def test3(self):
-        self.mgr._message_tracker_reader = AsyncMock(
-            return_value=[AckResponse(self.tt_addr, CMD_MOVE_UP)]
-        )
+        self.mgr._message_tracker_reader = MagicMock()
+        self.mgr._message_tracker_reader.__aiter__.return_value = [
+            AckResponse(self.tt_addr, CMD_MOVE_UP)
+        ]
         await self.mgr.message_tracker()
-        self.cover.set_target_drop_pct_hint.awaited_once_with(self.tt_addr, 1.0)
+        self.cover.set_closing.assert_awaited_once_with()
 
     async def test4(self):
-        self.mgr._message_tracker_reader = AsyncMock(
-            return_value=[AckResponse(self.tt_addr, CMD_MOVE_DOWN)]
-        )
+        self.mgr._message_tracker_reader = MagicMock()
+        self.mgr._message_tracker_reader.__aiter__.return_value = [
+            AckResponse(self.tt_addr, CMD_MOVE_DOWN)
+        ]
         await self.mgr.message_tracker()
-        self.cover.set_target_drop_pct_hint.awaited_once_with(self.tt_addr, 0.0)
+        self.cover.set_opening.assert_awaited_once_with()
 
     async def test5(self):
-        self.mgr._message_tracker_reader = AsyncMock(
-            return_value=[HexPosResponse(self.tt_addr, CMD_MOVE_POS, 0x00)]
-        )
+        self.mgr._message_tracker_reader = MagicMock()
+        self.mgr._message_tracker_reader.__aiter__.return_value = [
+            HexPosResponse(self.tt_addr, CMD_MOVE_POS, 0x00)
+        ]
         await self.mgr.message_tracker()
-        self.cover.set_target_drop_pct_hint.awaited_once_with(self.tt_addr, 0.0)
+        self.cover.set_target_drop_pct_hint.assert_awaited_once_with(0.0)
 
     async def test6(self):
-        self.mgr._message_tracker_reader = AsyncMock(
-            return_value=[HexPosResponse(self.tt_addr, CMD_MOVE_POS, 0xFF)]
-        )
+        self.mgr._message_tracker_reader = MagicMock()
+        self.mgr._message_tracker_reader.__aiter__.return_value = [
+            HexPosResponse(self.tt_addr, CMD_MOVE_POS, 0xFF)
+        ]
         await self.mgr.message_tracker()
-        self.cover.set_target_drop_pct_hint.awaited_once_with(self.tt_addr, 1.0)
+        self.cover.set_target_drop_pct_hint.assert_awaited_once_with(1.0)
