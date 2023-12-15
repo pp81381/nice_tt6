@@ -1,14 +1,15 @@
 from contextlib import asynccontextmanager
 import logging
+from typing import Optional
 from nicett6.decode import Decode
 from nicett6.encode import Encode
 from nicett6.utils import async_get_platform_serial_port
 from nicett6.multiplexer import (
     MultiplexerReader,
-    MultiplexerSerialConnection,
+    MultiplexerSerialConnection as TT6Connection,
     MultiplexerWriter,
 )
-from serial import PARITY_NONE, STOPBITS_ONE
+from serial import PARITY_NONE, STOPBITS_ONE  # type: ignore
 
 
 _LOGGER = logging.getLogger(__name__)
@@ -16,32 +17,26 @@ _LOGGER = logging.getLogger(__name__)
 
 @asynccontextmanager
 async def open_connection(serial_port=None):
-    conn = TT6Connection()
+    conn = await open(serial_port)
     try:
-        await conn.open(serial_port)
         yield conn
     finally:
         conn.close()
 
 
-class TT6Connection(MultiplexerSerialConnection):
-    def __init__(self):
-        super().__init__(TT6Reader, TT6Writer, 0.05)
-
-    async def open(self, serial_port=None):
-        if serial_port is None:
-            serial_port = await async_get_platform_serial_port()
-        await super().open(
-            Decode.EOL,
-            url=serial_port,
-            baudrate=19200,
-            timeout=None,
-            parity=PARITY_NONE,
-            stopbits=STOPBITS_ONE,
-        )
-
-    def close(self):
-        super().close()
+async def open(serial_port: Optional[str] = None) -> TT6Connection:
+    if serial_port is None:
+        serial_port = await async_get_platform_serial_port()
+    conn = TT6Connection(TT6Reader, TT6Writer, 0.05)
+    await conn.open(
+        Decode.EOL,
+        url=serial_port,
+        baudrate=19200,
+        timeout=None,
+        parity=PARITY_NONE,
+        stopbits=STOPBITS_ONE,
+    )
+    return conn
 
 
 class TT6Reader(MultiplexerReader):

@@ -39,7 +39,7 @@ class TestCIWManager(IsolatedAsyncioTestCase):
     def setUp(self):
         self.conn = make_mock_conn()
         patcher = patch(
-            "nicett6.cover_manager.TT6Connection",
+            "nicett6.cover_manager.open_tt6",
             return_value=self.conn,
         )
         self.addCleanup(patcher.stop)
@@ -78,7 +78,9 @@ class TestCIWManager(IsolatedAsyncioTestCase):
             self.ciw.mask_tt6_cover.cover,
             self.ciw.image_def,
         )
-        self.assertAlmostEqual(helper.aspect_ratio, 2.3508668821627974)
+        self.assertIsNotNone(helper.aspect_ratio)
+        if helper.aspect_ratio is not None:
+            self.assertAlmostEqual(helper.aspect_ratio, 2.3508668821627974)
 
     async def test3(self):
         self.assertEqual(self.ciw.screen_tt6_cover.cover.is_moving, False)

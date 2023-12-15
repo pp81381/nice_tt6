@@ -56,7 +56,7 @@ async def main(serial_port, example):
         with ciw.get_helper().position_logger(logging.INFO):
             reader_task = asyncio.create_task(mgr.message_tracker())
             example_task = asyncio.create_task(example(ciw))
-            writer = mgr._conn.get_writer()
+            writer = mgr.conn.get_writer()
             request_task = asyncio.create_task(
                 run_coro_after_delay(
                     request_screen_position(writer, ciw.screen_tt6_cover.tt_addr)

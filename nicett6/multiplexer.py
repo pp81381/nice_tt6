@@ -1,7 +1,8 @@
 import asyncio
+from typing import Optional
 from nicett6.buffer import MessageBuffer
 import logging
-from serial_asyncio import create_serial_connection
+from nicett6.serial_asyncio import create_serial_connection
 import weakref
 
 _LOGGER = logging.getLogger(__name__)
@@ -12,7 +13,7 @@ class MultiplexerReaderStopSentinel:
 
 
 class MultiplexerReader:
-    """ Base class for Readers """
+    """Base class for Readers"""
 
     def __init__(self):
         self.queue = asyncio.Queue()
@@ -25,7 +26,7 @@ class MultiplexerReader:
             self.queue.put_nowait(decoded_msg)
 
     def decode(self, data):
-        """ Override this method if needed """
+        """Override this method if needed"""
         return data
 
     def connection_lost(self, exc):
@@ -51,7 +52,7 @@ class MultiplexerReader:
 
 
 class MultiplexerWriter:
-    """ Base class for Writers """
+    """Base class for Writers"""
 
     def __init__(self, conn):
         self.conn = conn
@@ -109,41 +110,56 @@ class MultiplexerProtocol(asyncio.Protocol):
 
 
 class MultiplexerSerialConnection:
-    def __init__(self, reader_factory, writer_factory, post_write_delay=0):
+    def __init__(self, reader_factory, writer_factory, post_write_delay: float = 0):
         self.reader_factory = reader_factory
         self.writer_factory = writer_factory
         self.post_write_delay = post_write_delay
-        self.transport = None
-        self.protocol = None
-        self.is_open = False
+        self._transport: Optional[asyncio.Transport] = None
+        self._protocol: Optional[MultiplexerProtocol] = None
+
+    @property
+    def is_open(self) -> bool:
+        return self._transport is not None and self._protocol is not None
+
+    @property
+    def transport(self) -> asyncio.Transport:
+        if self._transport is None:
+            raise RuntimeError("connection is not open")
+        return self._transport
+
+    @property
+    def protocol(self) -> MultiplexerProtocol:
+        if self._protocol is None:
+            raise RuntimeError("connection is not open")
+        return self._protocol
 
     async def open(self, eol, **kwargs):
         assert not self.is_open
         loop = asyncio.get_running_loop()
-        self.transport, self.protocol = await create_serial_connection(
+        self._transport, self._protocol = await create_serial_connection(
             loop,
             lambda: MultiplexerProtocol(eol),
             **kwargs,
         )
-        self.is_open = True
 
     def add_reader(self):
-        assert self.is_open
+        if self._protocol is None:
+            raise RuntimeError("connection is not open")
         reader = self.reader_factory()
-        self.protocol.readers.add(reader)
+        self._protocol.readers.add(reader)
         return reader
 
     def remove_reader(self, reader):
-        assert self.is_open
-        self.protocol.readers.remove(reader)
+        if self._protocol is None:
+            raise RuntimeError("connection is not open")
+        self._protocol.readers.remove(reader)
         reader.stop()
 
     def get_writer(self):
         return self.writer_factory(self)
 
     def close(self):
-        if self.is_open:
-            self.transport.close()
-            self.transport = None
-            self.protocol = None
-            self.is_open = False
+        if self._transport is not None:
+            self._transport.close()
+            self._transport = None
+            self._protocol = None

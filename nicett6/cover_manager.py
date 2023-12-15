@@ -1,5 +1,6 @@
 import logging
-from nicett6.connection import TT6Connection, TT6Writer, TT6Reader
+from typing import Dict, Optional, Union
+from nicett6.connection import open as open_tt6, TT6Connection, TT6Writer, TT6Reader
 from nicett6.cover import Cover, TT6Cover
 from nicett6.decode import AckResponse, HexPosResponse, PctAckResponse, PctPosResponse
 from nicett6.emulator.line_handler import (
@@ -20,14 +21,16 @@ from nicett6.ttbus_device import TTBusDeviceAddress
 
 _LOGGER = logging.getLogger(__name__)
 
+ResponseMessageType = Union[PctPosResponse, PctAckResponse, AckResponse, HexPosResponse]
+
 
 class CoverManager:
     def __init__(self, serial_port: str):
         self._conn = None
         self._serial_port = serial_port
-        self._message_tracker_reader: TT6Reader = None
-        self._writer: TT6Writer = None
-        self._tt6_covers_dict = {}
+        self._message_tracker_reader: Optional[TT6Reader] = None
+        self._writer: Optional[TT6Writer] = None
+        self._tt6_covers_dict: Dict[TTBusDeviceAddress, TT6Cover] = {}
 
     @property
     def serial_port(self):
@@ -37,6 +40,14 @@ class CoverManager:
     def tt6_covers(self):
         return self._tt6_covers_dict.values()
 
+    @property
+    def conn(self) -> TT6Connection:
+        if self._conn is None:
+            raise RuntimeError(
+                "connection property accessed when there is no connection"
+            )
+        return self._conn
+
     async def __aenter__(self):
         await self.open()
         return self
@@ -45,23 +56,25 @@ class CoverManager:
         await self.close()
 
     async def open(self):
-        self._conn = TT6Connection()
-        await self._conn.open(self._serial_port)
+        self._conn = await open_tt6(self._serial_port)
         # NOTE: reader is created here rather than in self.message_tracker
         # to ensure that all messages from this moment on are captured
-        self._message_tracker_reader: TT6Reader = self._conn.add_reader()
+        self._message_tracker_reader = self._conn.add_reader()
         self._writer = self._conn.get_writer()
         await self._writer.send_web_on()
 
     async def close(self):
         await self.remove_covers()
-        self._conn.remove_reader(self._message_tracker_reader)
-        self._message_tracker_reader = None
-        self._writer = None
-        self._conn.close()
-        self._conn = None
+        if self._conn is not None:
+            self._conn.remove_reader(self._message_tracker_reader)
+            self._message_tracker_reader = None
+            self._writer = None
+            self._conn.close()
+            self._conn = None
 
-    async def _handle_response_message_for_cover(self, msg, cover: Cover):
+    async def _handle_response_message_for_cover(
+        self, msg: ResponseMessageType, cover: Cover
+    ) -> None:
         if isinstance(msg, PctPosResponse):
             await cover.set_drop_pct(msg.pct_pos / 1000.0)
         elif isinstance(msg, PctAckResponse):
@@ -91,7 +104,7 @@ class CoverManager:
             if msg.cmd_code == CMD_MOVE_POS:
                 await cover.set_target_drop_pct_hint(msg.hex_pos / 255.0)
 
-    async def _handle_response_message(self, msg):
+    async def _handle_response_message(self, msg: ResponseMessageType) -> None:
         if hasattr(msg, "tt_addr"):
             try:
                 tt6_cover: TT6Cover = self._tt6_covers_dict[msg.tt_addr]
@@ -102,12 +115,15 @@ class CoverManager:
 
     async def message_tracker(self):
         _LOGGER.debug("message_tracker started")
-        async for msg in self._message_tracker_reader:
-            _LOGGER.debug("msg:%s", msg)
-            await self._handle_response_message(msg)
+        if self._message_tracker_reader is not None:
+            async for msg in self._message_tracker_reader:
+                _LOGGER.debug("msg:%s", msg)
+                await self._handle_response_message(msg)
         _LOGGER.debug("message tracker finished")
 
     async def add_cover(self, tt_addr: TTBusDeviceAddress, cover: Cover):
+        if self._writer is None:
+            raise RuntimeError("add_cover called when writer not initialised")
         tt6_cover = TT6Cover(tt_addr, cover, self._writer)
         tt6_cover.enable_notifier()
         self._tt6_covers_dict[tt_addr] = tt6_cover

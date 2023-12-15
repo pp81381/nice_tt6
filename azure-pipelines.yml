@@ -12,8 +12,8 @@ jobs:
     vmImage: ubuntu-latest
   strategy:
     matrix:
-      Python38:
-        python.version: '3.8'
+      Python311:
+        python.version: '3.11'
 
   steps:
   - task: UsePythonVersion@0
@@ -35,9 +35,9 @@ jobs:
   steps:
   - task: UsePythonVersion@0
     inputs:
-      versionSpec: '3.8'
+      versionSpec: '3.11'
       architecture: 'x64'
-    displayName: 'Use Python 3.8'
+    displayName: 'Use Python 3.11'
 
   - script: pip install build
     displayName: 'Install build'

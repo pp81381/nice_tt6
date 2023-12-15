@@ -1,16 +1,11 @@
 import asyncio
-from unittest.mock import AsyncMock
-from nicett6.ttbus_device import TTBusDeviceAddress
 from unittest import IsolatedAsyncioTestCase
-from nicett6.cover import Cover, TT6Cover, wait_for_motion_to_complete
+from nicett6.cover import Cover, wait_for_motion_to_complete
 
 
 class TestCover(IsolatedAsyncioTestCase):
     def setUp(self):
         self.cover = Cover("Test", 0.8)
-
-    def tearDown(self) -> None:
-        self.cover = None
 
     async def test1(self):
         self.assertAlmostEqual(self.cover.drop_pct, 1.0)

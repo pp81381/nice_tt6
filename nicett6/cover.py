@@ -1,5 +1,6 @@
 import asyncio
 import logging
+from typing import Optional
 from nicett6.ttbus_device import TTBusDeviceAddress
 from nicett6.connection import TT6Writer
 from nicett6.utils import AsyncObservable, AsyncObserver, check_pct
@@ -120,7 +121,7 @@ class Cover(AsyncObservable):
         await self.moved()
 
     async def set_target_drop_pct_hint(self, target_drop_pct):
-        """"Force the state to is_opening/closing based on target drop_pct"""
+        """ "Force the state to is_opening/closing based on target drop_pct"""
         if target_drop_pct < self._drop_pct:
             await self.set_opening()
         elif target_drop_pct > self._drop_pct:
@@ -130,18 +131,17 @@ class Cover(AsyncObservable):
 class TT6Cover:
     """Class that sends commands to a `Cover` that is connected to the TTBus"""
 
-    def __init__(self, tt_addr, cover, writer):
+    def __init__(self, tt_addr: TTBusDeviceAddress, cover: Cover, writer: TT6Writer):
         self.tt_addr: TTBusDeviceAddress = tt_addr
         self.cover: Cover = cover
         self.writer: TT6Writer = writer
-        self._notifier = PostMovementNotifier()
+        self._notifier = PostMovementNotifier(cover)
 
     def enable_notifier(self):
-        self.cover.attach(self._notifier)
+        self._notifier.enable()
 
     async def disable_notifier(self):
-        self.cover.detach(self._notifier)
-        await self._notifier.cleanup()
+        await self._notifier.disable()
 
     async def send_pos_request(self):
         await self.writer.send_web_pos_request(self.tt_addr)
@@ -188,29 +188,39 @@ async def wait_for_motion_to_complete(covers):
 
 
 class PostMovementNotifier(AsyncObserver):
-    """Invokes notify_observers one last time after movement stops"""
+    """Invokes set_idle (and hence notify_observers) one last time after movement stops"""
 
     POST_MOVEMENT_ALLOWANCE = 0.05
 
-    def __init__(self):
+    def __init__(self, cover: Cover):
         super().__init__()
-        self._task_lock = asyncio.Lock()
-        self._task = None
+        self._task_lock: asyncio.Lock = asyncio.Lock()
+        self._task: Optional[asyncio.Task] = None
+        self.cover: Cover = cover
 
-    async def update(self, cover: Cover) -> None:
+    def enable(self):
+        self.cover.attach(self)
+
+    async def disable(self):
+        self.cover.detach(self)
+        await self.cleanup()
+
+    async def update(self, observable: AsyncObservable) -> None:
         """Reset the task if the state of the Cover changes"""
         async with self._task_lock:
             await self._cancel_task()
-            if cover.is_moving:  # Only need a new task if moving, plus avoid recursion
-                self._task = asyncio.create_task(self._set_idle_after_delay(cover))
-                cover.log("PostMovementNotifier task started", logging.DEBUG)
+            if (
+                self.cover.is_moving
+            ):  # Only need a new task if moving, plus avoid recursion
+                self._task = asyncio.create_task(self._set_idle_after_delay())
+                self.cover.log("PostMovementNotifier task started", logging.DEBUG)
 
-    async def _set_idle_after_delay(self, cover: Cover):
+    async def _set_idle_after_delay(self):
         await asyncio.sleep(
-            cover.MOVEMENT_THRESHOLD_INTERVAL + self.POST_MOVEMENT_ALLOWANCE
+            self.cover.MOVEMENT_THRESHOLD_INTERVAL + self.POST_MOVEMENT_ALLOWANCE
         )
-        await cover.set_idle()
-        cover.log("PostMovementNotifier sent idle", logging.DEBUG)
+        await self.cover.set_idle()
+        self.cover.log("PostMovementNotifier sent idle", logging.DEBUG)
 
     async def cleanup(self):
         _LOGGER.debug(f"PostMovementNotifier cleanup")

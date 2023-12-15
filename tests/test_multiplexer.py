@@ -32,8 +32,8 @@ class TestConnection(IsolatedAsyncioTestCase):
         self.mock_csc.assert_called_once()
         self.assertTrue(conn.is_open)
         t = conn.transport
-        self.assertIsInstance(t, MagicMock)
         p = conn.protocol
+        self.assertIsInstance(t, MagicMock)
         self.assertIsInstance(p, MultiplexerProtocol)
         self.assertEqual(p.buf.eol, RCV_EOL)
         conn.close()
@@ -42,7 +42,6 @@ class TestConnection(IsolatedAsyncioTestCase):
 
 
 class TestReaderAndWriter(IsolatedAsyncioTestCase):
-
     DATA_RECEIVED = b"TEST MESSAGE 1" + RCV_EOL + b"TEST MESSAGE 2" + RCV_EOL
     EXPECTED_MESSAGES = [
         b"TEST MESSAGE 1" + RCV_EOL,

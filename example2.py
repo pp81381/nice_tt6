@@ -80,6 +80,34 @@ async def run_example_commands_mask_down_step(writer, screen_tt_addr, mask_tt_ad
     _LOGGER.info("run_example_commands_mask_down_step completed")
 
 
+async def run_example_commands_ar235(writer, screen_tt_addr, mask_tt_addr):
+    await writer.send_web_on()
+    await writer.send_hex_move_command(screen_tt_addr, 0x12)
+    await writer.send_hex_move_command(mask_tt_addr, 0x4A)
+    _LOGGER.info("run_example_commands_mask_down_step completed")
+
+
+async def run_example_commands_ar20(writer, screen_tt_addr, mask_tt_addr):
+    await writer.send_web_on()
+    await writer.send_hex_move_command(screen_tt_addr, 0x0D)
+    await writer.send_hex_move_command(mask_tt_addr, 0xA0)
+    _LOGGER.info("run_example_commands_mask_down_step completed")
+
+
+async def run_example_commands_ar20b(writer, screen_tt_addr, mask_tt_addr):
+    await writer.send_web_on()
+    await writer.send_hex_move_command(screen_tt_addr, 0x0B)
+    await writer.send_hex_move_command(mask_tt_addr, 0xA0)
+    _LOGGER.info("run_example_commands_mask_down_step completed")
+
+
+async def run_example_commands_top_gun(writer, screen_tt_addr, mask_tt_addr):
+    await writer.send_web_on()
+    await writer.send_hex_move_command(screen_tt_addr, 0x07)
+    await writer.send_hex_move_command(mask_tt_addr, 0xB5)
+    _LOGGER.info("run_example_commands_mask_down_step completed")
+
+
 async def request_screen_position(writer, tt_addr):
     _LOGGER.info("requesting screen position")
     responses = await writer.process_request(
@@ -125,6 +153,10 @@ if __name__ == "__main__":
         ("down_step", run_example_commands_screen_down_step),
         ("mask_up_step", run_example_commands_mask_up_step),
         ("mask_down_step", run_example_commands_mask_down_step),
+        ("ar235", run_example_commands_ar235),
+        ("ar20", run_example_commands_ar20),
+        ("ar20b", run_example_commands_ar20b),
+        ("tg", run_example_commands_top_gun),
     )
     serial_port, example = parse_example_args(examples)
     asyncio.run(main(serial_port, example))

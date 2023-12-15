@@ -1,10 +1,8 @@
-from typing import ValuesView
-from serial.serialutil import SerialException
 from nicett6.decode import AckResponse
 from nicett6.connection import open_connection
 from nicett6.ttbus_device import TTBusDeviceAddress
 from unittest import IsolatedAsyncioTestCase
-from unittest.mock import call, MagicMock, patch
+from unittest.mock import MagicMock, patch
 
 RCV_EOL = b"\r"
 
@@ -43,9 +41,7 @@ class TestReaderAndWriter(IsolatedAsyncioTestCase):
 
 class TestOpenConnection(IsolatedAsyncioTestCase):
     async def test1(self):
-        with patch(
-            "nicett6.connection.TT6Connection.open", side_effect=ValueError("Test")
-        ):
+        with patch("nicett6.connection.open", side_effect=ValueError("Test")):
             with self.assertRaises(ValueError):
                 async with open_connection():
                     pass

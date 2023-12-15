@@ -3,7 +3,7 @@ from contextlib import contextmanager, ExitStack
 import logging
 from nicett6.emulator.cover_emulator import TT6CoverEmulator
 from nicett6.emulator.line_handler import LineHandler
-from nicett6.utils import AsyncObserver
+from nicett6.utils import AsyncObserver, AsyncObservable
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -132,6 +132,6 @@ class TT6Controller(AsyncObserver):
         for wrapped_writer in self.writers:
             await wrapped_writer.write_msg(msg)
 
-    async def update(self, device):
-        if self.web_on:
+    async def update(self, device: AsyncObservable):
+        if isinstance(device, TT6CoverEmulator) and self.web_on:
             await self.write_all_wrapped_writers(LineHandler.fmt_pos_msg(device))

@@ -70,12 +70,12 @@ async def read_messages(reader: TT6Reader, handler: MessageHandler):
     _LOGGER.info(f"read_messages finished")
 
 
-async def log_movement_timing(serial_port, address):
+async def log_movement_timing(serial_port: str, address: int) -> None:
     tt_addr = TTBusDeviceAddress(address, 0x04)
     max_drop = 2.0
     async with CoverManager(serial_port) as mgr:
         handler: MessageHandler = MessageHandler()
-        reader: TT6Reader = mgr._conn.add_reader()
+        reader: TT6Reader = mgr.conn.add_reader()
         read_messages_task = asyncio.create_task(read_messages(reader, handler))
         message_tracker_task = asyncio.create_task(mgr.message_tracker())
 

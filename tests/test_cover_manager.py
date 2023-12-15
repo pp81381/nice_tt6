@@ -27,7 +27,7 @@ class TestCoverManagerOpen(IsolatedAsyncioTestCase):
     async def test1(self):
         conn = make_mock_conn(TEST_READER_POS_RESPONSE)
         with patch(
-            "nicett6.cover_manager.TT6Connection",
+            "nicett6.cover_manager.open_tt6",
             return_value=conn,
         ):
             mgr = CoverManager("DUMMY_SERIAL_PORT")
@@ -40,7 +40,7 @@ class TestCoverManager(IsolatedAsyncioTestCase):
     def setUp(self):
         self.conn = make_mock_conn(TEST_READER_POS_RESPONSE)
         patcher = patch(
-            "nicett6.cover_manager.TT6Connection",
+            "nicett6.cover_manager.open_tt6",
             return_value=self.conn,
         )
         self.addCleanup(patcher.stop)
@@ -72,17 +72,17 @@ class TestCoverManager(IsolatedAsyncioTestCase):
     async def test7(self):
         await self.tt6_cover.send_close_command()
         writer = self.conn.get_writer.return_value
-        writer.send_simple_command.assert_awaited_with(self.tt_addr, "MOVE_UP"),
+        writer.send_simple_command.assert_awaited_with(self.tt_addr, "MOVE_UP")
 
     async def test8(self):
         await self.tt6_cover.send_open_command()
         writer = self.conn.get_writer.return_value
-        writer.send_simple_command.assert_awaited_with(self.tt_addr, "MOVE_DOWN"),
+        writer.send_simple_command.assert_awaited_with(self.tt_addr, "MOVE_DOWN")
 
     async def test9(self):
         await self.tt6_cover.send_stop_command()
         writer = self.conn.get_writer.return_value
-        writer.send_simple_command.assert_awaited_with(self.tt_addr, "STOP"),
+        writer.send_simple_command.assert_awaited_with(self.tt_addr, "STOP")
 
     async def test10(self):
         """Test the notifier"""
@@ -100,7 +100,8 @@ class TestCoverManager(IsolatedAsyncioTestCase):
         self.assertTrue(self.cover.is_opening)
         self.assertFalse(self.cover.is_closing)
         self.assertIsNotNone(self.tt6_cover._notifier._task)
-        self.assertFalse(self.tt6_cover._notifier._task.done())
+        if self.tt6_cover._notifier._task is not None:
+            self.assertFalse(self.tt6_cover._notifier._task.done())
 
         # wait for motion to to complete but task still running
         await asyncio.sleep(Cover.MOVEMENT_THRESHOLD_INTERVAL + 0.01)
@@ -112,7 +113,8 @@ class TestCoverManager(IsolatedAsyncioTestCase):
         self.assertFalse(self.cover.is_opening)
         self.assertFalse(self.cover.is_closing)
         self.assertIsNotNone(self.tt6_cover._notifier._task)
-        self.assertFalse(self.tt6_cover._notifier._task.done())
+        if self.tt6_cover._notifier._task is not None:
+            self.assertFalse(self.tt6_cover._notifier._task.done())
 
         # wait for notifier task to complete
         await asyncio.sleep(PostMovementNotifier.POST_MOVEMENT_ALLOWANCE + 0.02)
@@ -136,7 +138,7 @@ class TestCoverManagerContextManager(IsolatedAsyncioTestCase):
     def setUp(self):
         self.conn = make_mock_conn(TEST_READER_POS_RESPONSE)
         patcher = patch(
-            "nicett6.cover_manager.TT6Connection",
+            "nicett6.cover_manager.open_tt6",
             return_value=self.conn,
         )
         self.addCleanup(patcher.stop)
@@ -152,7 +154,7 @@ class TestCoverManagerContextManager(IsolatedAsyncioTestCase):
             writer.send_web_pos_request.assert_awaited_with(self.tt_addr)
             await tt6_cover.send_open_command()
             writer = self.conn.get_writer.return_value
-            writer.send_simple_command.assert_awaited_with(self.tt_addr, "MOVE_DOWN"),
+            writer.send_simple_command.assert_awaited_with(self.tt_addr, "MOVE_DOWN")
             self.conn.close.assert_not_called()
         self.conn.close.assert_called_once()
 

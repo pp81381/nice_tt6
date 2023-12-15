@@ -15,7 +15,7 @@ PCT_ABS_TOL = 0.0000001
 
 
 def get_system_serial_port(system):
-    """ Work out the most likely serial port given the type of system. YMMV. """
+    """Work out the most likely serial port given the type of system. YMMV."""
     if system == "Windows":
         return "COM3"
     elif system == "Linux":

@@ -34,7 +34,7 @@ The serial_port parameter can be anything that can be passed to `serial.serial_f
 * `COM3` (Windows)
 * `socket://192.168.0.100:50000` (if you are using a TCP/IP to serial  converter)
 
-Returns an async context managed `MultiPlexerSerialConnection`
+Returns an async context managed `MultiplexerSerialConnection`
 
 Example:
 
@@ -45,7 +45,7 @@ Example:
         await writer.send_hex_move_command(tt_addr, 0xE0)
 ```
 
-## MultiPlexerSerialConnection
+## MultiplexerSerialConnection
 
 A class that allows multiple readers and writers to a single serial connection.
 
@@ -53,9 +53,9 @@ Created by `open_connection([serial_port])`.   See [Opening a connection](#openi
 
 Method|Description
 --|--
-`MultiPlexerSerialConnection.add_reader()`|Returns a new reader object.<br>If the connection was created by `open_connection` then this will be a `TT6Reader` object, derived from `MultiplexerReader`.<br>The serial connection retains a weak reference to the reader in order to keep it updated.  A reader that is no longer needed can either be dereferenced or explicitly removed.
-`MultiPlexerSerialConnection.remove_reader(reader)`|Stops the `reader` object from receiving any further messages
-`MultiPlexerSerialConnection.get_writer()`|Returns a new writer object.   If the connection was created by `open_connection` then this will be a `TT6Writer` object, derived from `MultiplexerWriter`.<br>The base class manages contention between multiple potential clients of the same connection.<br>Writer objects do not take any resources and can simply be dereferenced when finished with
+`MultiplexerSerialConnection.add_reader()`|Returns a new reader object.<br>If the connection was created by `open_connection` then this will be a `TT6Reader` object, derived from `MultiplexerReader`.<br>The serial connection retains a weak reference to the reader in order to keep it updated.  A reader that is no longer needed can either be dereferenced or explicitly removed.
+`MultiplexerSerialConnection.remove_reader(reader)`|Stops the `reader` object from receiving any further messages
+`MultiplexerSerialConnection.get_writer()`|Returns a new writer object.   If the connection was created by `open_connection` then this will be a `TT6Writer` object, derived from `MultiplexerWriter`.<br>The base class manages contention between multiple potential clients of the same connection.<br>Writer objects do not take any resources and can simply be dereferenced when finished with
 
 ## TTBusDeviceAddress
 
