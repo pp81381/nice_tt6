@@ -2,7 +2,7 @@ import asyncio
 from typing import Optional
 from nicett6.buffer import MessageBuffer
 import logging
-from nicett6.serial_asyncio import create_serial_connection
+from nicett6.serial_asyncio import create_serial_connection  # type: ignore
 import weakref
 
 _LOGGER = logging.getLogger(__name__)
