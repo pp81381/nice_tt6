@@ -75,7 +75,8 @@ async def log_movement_timing(serial_port: str, address: int) -> None:
     max_drop = 2.0
     async with CoverManager(serial_port) as mgr:
         handler: MessageHandler = MessageHandler()
-        reader: TT6Reader = mgr.conn.add_reader()
+        reader = mgr.conn.add_reader()
+        assert isinstance(reader, TT6Reader)
         read_messages_task = asyncio.create_task(read_messages(reader, handler))
         message_tracker_task = asyncio.create_task(mgr.message_tracker())
 

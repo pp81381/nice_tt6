@@ -1,4 +1,6 @@
 import asyncio
+from logging import WARNING
+from tests import make_mock_conn
 from nicett6.ciw_helper import CIWHelper, ImageDef
 from nicett6.ciw_manager import (
     CIWManager,
@@ -12,7 +14,13 @@ from nicett6.decode import PctPosResponse
 from nicett6.ttbus_device import TTBusDeviceAddress
 from nicett6.utils import run_coro_after_delay
 from unittest import IsolatedAsyncioTestCase, TestCase
-from unittest.mock import AsyncMock, call, MagicMock, patch
+from unittest.mock import call, patch
+
+TEST_READER_POS_RESPONSE = [
+    PctPosResponse(TTBusDeviceAddress(0x02, 0x04), 110),
+    PctPosResponse(TTBusDeviceAddress(0x03, 0x04), 539),
+    PctPosResponse(TTBusDeviceAddress(0x04, 0x04), 750),  # Address 0x04 Ignored
+]
 
 
 async def cleanup_task(task):
@@ -21,23 +29,9 @@ async def cleanup_task(task):
     await task
 
 
-def make_mock_conn():
-    mock_reader = AsyncMock(name="reader")
-    mock_reader.__aiter__.return_value = [
-        PctPosResponse(TTBusDeviceAddress(0x02, 0x04), 110),
-        PctPosResponse(TTBusDeviceAddress(0x03, 0x04), 539),
-        PctPosResponse(TTBusDeviceAddress(0x04, 0x04), 750),  # Address 0x04 Ignored
-    ]
-    conn = AsyncMock()
-    conn.add_reader = MagicMock(return_value=mock_reader)
-    conn.get_writer = MagicMock(return_value=AsyncMock(name="writer"))
-    conn.close = MagicMock()
-    return conn
-
-
 class TestCIWManager(IsolatedAsyncioTestCase):
     def setUp(self):
-        self.conn = make_mock_conn()
+        self.conn = make_mock_conn(TEST_READER_POS_RESPONSE)
         patcher = patch(
             "nicett6.cover_manager.open_tt6",
             return_value=self.conn,
@@ -72,7 +66,14 @@ class TestCIWManager(IsolatedAsyncioTestCase):
         )
 
     async def test2(self):
-        await self.mgr.message_tracker()
+        with self.assertLogs("nicett6.cover_manager", level=WARNING) as cm:
+            await self.mgr.message_tracker()
+        self.assertEqual(
+            cm.output,
+            [
+                "WARNING:nicett6.cover_manager:response message addressed to unknown device: PctPosResponse(TTBusDeviceAddress(0x04, 0x04), 750)",
+            ],
+        )
         helper = CIWHelper(
             self.ciw.screen_tt6_cover.cover,
             self.ciw.mask_tt6_cover.cover,

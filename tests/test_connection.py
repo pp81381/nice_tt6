@@ -1,5 +1,5 @@
 from nicett6.decode import AckResponse
-from nicett6.connection import open_connection
+from nicett6.connection import TT6Writer, open_connection
 from nicett6.ttbus_device import TTBusDeviceAddress
 from unittest import IsolatedAsyncioTestCase
 from unittest.mock import MagicMock, patch
@@ -35,6 +35,7 @@ class TestReaderAndWriter(IsolatedAsyncioTestCase):
     async def test_writer(self):
         async with open_connection() as conn:
             writer = conn.get_writer()
+            assert isinstance(writer, TT6Writer)
             await writer.send_web_on()
             conn.transport.write.assert_called_once_with(b"WEB_ON" + RCV_EOL)
 

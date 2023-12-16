@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
+from typing import Callable, Union
 from nicett6.emulator.line_handler import CMD_READ_POS, CMD_MOVE_POS
 from nicett6.ttbus_device import TTBusDeviceAddress
 from nicett6.utils import hex_arg_to_int, pct_arg_to_int
@@ -63,7 +64,17 @@ class ErrorResponse:
         return f"{type(self).__name__}({self.error})"
 
 
-def _decode_cmd_response(args: list[str]):
+ResponseMessageType = Union[
+    AckResponse,
+    HexPosResponse,
+    PctPosResponse,
+    PctAckResponse,
+    InformationalResponse,
+    ErrorResponse,
+]
+
+
+def _decode_cmd_response(args: list[str]) -> ResponseMessageType:
     if len(args) < 3:
         raise InvalidResponseError()
     tt_addr = TTBusDeviceAddress(
@@ -79,7 +90,10 @@ def _decode_cmd_response(args: list[str]):
         raise InvalidResponseError()
 
 
-def _decode_web_pos_or_ack_response(args: list[str], factory):
+def _decode_web_pos_or_ack_response(
+    args: list[str],
+    factory: Callable[[TTBusDeviceAddress, int], Union[PctAckResponse, PctPosResponse]],
+) -> ResponseMessageType:
     if len(args) != 6:
         raise InvalidResponseError()
     if args[4] != "FFFF" or args[5] != "FF":
@@ -89,7 +103,7 @@ def _decode_web_pos_or_ack_response(args: list[str], factory):
     return factory(tt_addr, pct_pos)
 
 
-def _decode_web_response(args: list[str], line: str):
+def _decode_web_response(args: list[str], line: str) -> ResponseMessageType:
     if len(args) < 1:
         raise InvalidResponseError()
     cmd_char = args[0]
@@ -105,11 +119,10 @@ def _decode_web_response(args: list[str], line: str):
 
 
 class Decode:
-
     EOL = b"\r"
 
     @classmethod
-    def decode_line_bytes(cls, line_bytes: bytes):
+    def decode_line_bytes(cls, line_bytes: bytes) -> ResponseMessageType:
         if line_bytes.find(cls.EOL) != len(line_bytes) - len(cls.EOL):
             raise InvalidResponseError()
 

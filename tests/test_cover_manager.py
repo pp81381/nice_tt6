@@ -1,4 +1,6 @@
 import asyncio
+from logging import WARNING
+from tests import make_mock_conn
 from nicett6.decode import AckResponse, HexPosResponse, PctAckResponse, PctPosResponse
 from nicett6.cover_manager import CoverManager
 from nicett6.cover import Cover, PostMovementNotifier
@@ -11,17 +13,6 @@ TEST_READER_POS_RESPONSE = [
     PctPosResponse(TTBusDeviceAddress(0x02, 0x04), 110),
     PctPosResponse(TTBusDeviceAddress(0x03, 0x04), 539),  # Address 0x03 Ignored
 ]
-
-
-def make_mock_conn(reader_return_value):
-    mock_reader = AsyncMock(name="reader")
-    mock_reader.__aiter__.return_value = reader_return_value
-    conn = AsyncMock()
-    conn.add_reader = MagicMock(return_value=mock_reader)
-    conn.get_writer = MagicMock(return_value=AsyncMock(name="writer"))
-    conn.remove_reader = MagicMock()
-    conn.close = MagicMock()
-    return conn
 
 
 class TestCoverManagerOpen(IsolatedAsyncioTestCase):
@@ -62,8 +53,15 @@ class TestCoverManager(IsolatedAsyncioTestCase):
         writer.send_web_pos_request.assert_awaited_with(self.tt_addr)
 
     async def test2(self):
-        await self.mgr.message_tracker()
+        with self.assertLogs("nicett6.cover_manager", level=WARNING) as cm:
+            await self.mgr.message_tracker()
         self.assertAlmostEqual(self.cover.drop, 1.78)
+        self.assertEqual(
+            cm.output,
+            [
+                "WARNING:nicett6.cover_manager:response message addressed to unknown device: PctPosResponse(TTBusDeviceAddress(0x03, 0x04), 539)",
+            ],
+        )
 
     async def test6(self):
         await self.tt6_cover.send_drop_pct_command(0.5)

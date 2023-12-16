@@ -1,8 +1,8 @@
 import asyncio
-from typing import Optional
+from typing import Callable, Optional
 from nicett6.buffer import MessageBuffer
 import logging
-from nicett6.serial_asyncio import create_serial_connection  # type: ignore
+from serial_asyncio_fast import create_serial_connection  # type: ignore[import-untyped]
 import weakref
 
 _LOGGER = logging.getLogger(__name__)
@@ -110,7 +110,12 @@ class MultiplexerProtocol(asyncio.Protocol):
 
 
 class MultiplexerSerialConnection:
-    def __init__(self, reader_factory, writer_factory, post_write_delay: float = 0):
+    def __init__(
+        self,
+        reader_factory: Callable[[], MultiplexerReader],
+        writer_factory: Callable[["MultiplexerSerialConnection"], MultiplexerWriter],
+        post_write_delay: float = 0,
+    ):
         self.reader_factory = reader_factory
         self.writer_factory = writer_factory
         self.post_write_delay = post_write_delay
@@ -133,29 +138,31 @@ class MultiplexerSerialConnection:
             raise RuntimeError("connection is not open")
         return self._protocol
 
-    async def open(self, eol, **kwargs):
+    async def open(self, eol, **kwargs) -> None:
         assert not self.is_open
         loop = asyncio.get_running_loop()
-        self._transport, self._protocol = await create_serial_connection(
+        self._transport, protocol = await create_serial_connection(
             loop,
             lambda: MultiplexerProtocol(eol),
             **kwargs,
         )
+        assert isinstance(protocol, MultiplexerProtocol)
+        self._protocol = protocol
 
-    def add_reader(self):
+    def add_reader(self) -> MultiplexerReader:
         if self._protocol is None:
             raise RuntimeError("connection is not open")
         reader = self.reader_factory()
         self._protocol.readers.add(reader)
         return reader
 
-    def remove_reader(self, reader):
+    def remove_reader(self, reader: MultiplexerReader) -> None:
         if self._protocol is None:
             raise RuntimeError("connection is not open")
         self._protocol.readers.remove(reader)
         reader.stop()
 
-    def get_writer(self):
+    def get_writer(self) -> MultiplexerWriter:
         return self.writer_factory(self)
 
     def close(self):
