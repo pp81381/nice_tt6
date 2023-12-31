@@ -340,7 +340,7 @@ A high level API to manage a Constant Image Width retractable projector screen w
 Component|Description
 --|--
 `CIWManager`|A class that manages a screen and mask simultaneously
-`CIWHelper`|A sensor class that tracks the positions of a screen and mask<br>Has properties to represent the visible image area<br>Provides methods to calculate the drops needed for a specific aspect ratio
+`CIWHelper`|A sensor class that tracks the positions of a screen and mask<br>Has properties to represent the visible image area
 `ImageDef`|A class that describes where the image area is located on a cover that is a screen
 
 <br>Example (also see [example1.py](#Examples) below):
@@ -360,9 +360,9 @@ async def main(serial_port=None):
             ImageDef(0.05, 1.57, 16 / 9),
         )
         reader_task = asyncio.create_task(mgr.message_tracker())
-        mode = CIWAspectRatioMode.FIXED_BOTTOM
-        baseline_drop = ciw.default_baseline_drop(mode)
-        await ciw.send_set_aspect_ratio(2.35, mode, baseline_drop)
+        await ciw.send_close_command()
+        await ciw.wait_for_motion_to_complete()
+        await ciw.send_open_command()
         await ciw.wait_for_motion_to_complete()
     await reader_task
 ```
@@ -377,13 +377,13 @@ Parameter|Description
 --|--
 `screen_tt6_cover`|The `TT6Cover` through which the screen cover can be controlled
 `mask_tt6_cover`|The `TT6Cover` through which the mask cover can be controlled
-`image_def`|An ImageDef object describing where the image area on the screen cover is
+`image_def`|An `ImageDef` object describing where the image area on the screen cover is
 
 Property|Description
 --|--
 `CIWManager.screen_tt6_cover`|The `TT6Cover` through which the screen cover can be controlled
 `CIWManager.mask_tt6_cover`|The `TT6Cover` through which the mask cover can be controlled
-`CIWManager.image_def`|An ImageDef object describing where the image area on the screen cover is
+`CIWManager.image_def`|An `ImageDef` object describing where the image area on the screen cover is
 
 Method|Description
 --|--
@@ -392,21 +392,7 @@ Method|Description
 `CIWManager.send_close_command()`|Send a close command to the screen and mask
 `CIWManager.send_open_command()`|Send an open command to the screen and mask
 `CIWManager.send_stop_command()`|Send a stop command to the screen and mask
-`CIWManager.send_set_aspect_ratio(target_aspect_ratio, mode, baseline_drop)`|Send commands to set a specific aspect ratio<br>See `CIWManager.calculate_new_drops` for more details
 `CIWManager.wait_for_motion_to_complete()`|Waits for motion to complete for both screen and mask<br>Has side effect of notifying observers of the cover when it goes idle
-`CIWManager.calculate_new_drops(target_aspect_ratio, mode, baseline_drop`)|Calculate the screen and mask drops necessary to set the `target_aspect_ratio`<br>`mode` defines whether the position of the top, middle or bottom of the screen should be held constant relative to `baseline_drop`<br>(See [CIWAspectRatioMode](#CIWApectRatioMode) for details)<br>Returns `None` if the `target_aspect_ratio` can't be achieved
-`CIWManager.default_baseline_drop(mode)`|Return the most useful baseline_drop for each mode, e.g. with the screen fully extended
-
-
-## CIWApectRatioMode
-
-An enumeration used to specify where the target visible image area should be relative to the current visible image area
-
-Enum Value|Description
---|--
-CIWApectRatioMode.FIXED_TOP|The top of the current visible area is fixed<br>Typically the mask stays where it is and the screen moves up and down<br>If the mask is fully up then it will move to the top of the current image area
-CIWApectRatioMode.FIXED_MIDDLE|The middle line of the current visible area is fixed<br>Both the screen and mask will move
-CIWApectRatioMode.FIXED_BOTTOM|The middle line of the current visible area is fixed<br>Typically the screen stays where it is and the mask moves up and down
 
 
 ## CIWHelper
@@ -419,7 +405,7 @@ Parameter|Description
 --|--
 `screen`|A `Cover` sensor object representing the screen
 `mask`|A `Cover` sensor object representing the mask
-`image_def`|An ImageDef object describing where the image area on the screen cover is
+`image_def`|An `ImageDef` object describing where the image area on the screen cover is
 
 Properties:
 

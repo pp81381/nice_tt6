@@ -1,7 +1,7 @@
 import asyncio
 import logging
 
-from nicett6.ciw_manager import CIWAspectRatioMode, CIWManager
+from nicett6.ciw_manager import CIWManager
 from nicett6.ciw_position_logger import position_logger
 from nicett6.cover import Cover
 from nicett6.cover_manager import CoverManager
@@ -21,18 +21,6 @@ async def request_screen_position(writer, tt_addr):
 
 
 async def example_ciw1(ciw: CIWManager):
-    _LOGGER.info("closing screen")
-    await ciw.send_close_command()
-    await ciw.wait_for_motion_to_complete()
-    _LOGGER.info("screen closed")
-    mode: CIWAspectRatioMode = CIWAspectRatioMode.FIXED_BOTTOM
-    baseline_drop = ciw.default_baseline_drop(mode)
-    await ciw.send_set_aspect_ratio(2.35, mode, baseline_drop)
-    await ciw.wait_for_motion_to_complete()
-    _LOGGER.info("screen position set")
-
-
-async def example_ciw2(ciw: CIWManager):
     _LOGGER.info("closing screen")
     await ciw.send_close_command()
     await ciw.wait_for_motion_to_complete()
@@ -71,9 +59,6 @@ async def main(serial_port, example):
 
 if __name__ == "__main__":
     logging.basicConfig(level=logging.DEBUG)
-    examples = (
-        ("ciw1", example_ciw1),
-        ("ciw2", example_ciw2),
-    )
+    examples = (("ciw1", example_ciw1),)
     serial_port, example = parse_example_args(examples)
     asyncio.run(main(serial_port, example))
