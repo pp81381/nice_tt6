@@ -2,6 +2,7 @@ import asyncio
 import logging
 
 from nicett6.ciw_manager import CIWAspectRatioMode, CIWManager
+from nicett6.ciw_position_logger import position_logger
 from nicett6.cover import Cover
 from nicett6.cover_manager import CoverManager
 from nicett6.image_def import ImageDef
@@ -54,7 +55,7 @@ async def main(serial_port, example):
             mask_tt6_cover,
             ImageDef(0.05, 1.57, 16 / 9),
         )
-        with ciw.get_helper().position_logger(logging.INFO):
+        with position_logger(ciw.get_helper(), logging.INFO):
             reader_task = asyncio.create_task(mgr.message_tracker())
             example_task = asyncio.create_task(example(ciw))
             writer = mgr.conn.get_writer()
