@@ -1,7 +1,8 @@
 import argparse
 import asyncio
-from datetime import datetime, timedelta
 import logging
+from datetime import datetime, timedelta
+
 from nicett6.connection import TT6Reader
 from nicett6.cover import Cover
 from nicett6.cover_manager import CoverManager

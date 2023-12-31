@@ -146,7 +146,7 @@ Method|Description
 --|--
 `TT6Writer.send_web_on()`|Send the WEB_ON command to the controller to enable web commands and to instruct the controller to send the motor positions as they move
 `TT6Writer.send_web_off()`|Send the WEB_OFF command to the controller to disable web commands and to instruct the controller not to send the motor positions as they move
-`TT6Writer.send_simple_command(tt_addr, cmd_code)`|Send `cmd_code` to the TTBus device at `tt_addr`<br>See the table below for a list of all valid `cmd_code` values
+`TT6Writer.send_simple_command(tt_addr, cmd_name)`|Send `cmd_name` to the TTBus device at `tt_addr`<br>See the table below for a list of all valid `cmd_name` values
 `TT6Writer.send_hex_move_command(tt_addr, hex_pos)`|Instruct the controller to move the TTBus device at `tt_addr` to `hex_pos`<br>`hex_pos` is a value between 0x00 (fully down/open) and 0xFF (fully up/closed)
 `TT6Writer.send_web_move_command(tt_addr, pct_pos)`|Instruct the controller to move the TTBus device at `tt_addr` to `pct_pos`<br>`pct_pos` is a value between 0.0 (fully down/open) and 1.0 (fully up/closed)<br>Out of range values for `pct_pos` will be rounded up or down accordingly<br>Web commands must be enabled for this command to work
 `TT6Writer.send_web_pos_request(tt_addr)`|Send a request to the controller to send the position of the TTBus device at `tt_addr`<br>Web commands must be enabled for this command to work
@@ -165,10 +165,6 @@ Code|Meaning
 `DEL_POS_<n>`|Clear preset `n` where `n` is between 1 and 6
 `MOVE_DOWN_STEP`|Move down the smallest possible step (web pos is not reported by controller)
 `MOVE_UP_STEP`|Move up the smallest possible step (web pos is not reported by controller)
-`STORE_UPPER_LIMIT`|Store current position to upper limit (BEWARE!)
-`STORE_LOWER_LIMIT`|Store current position to lower limit (BEWARE!)
-`DEL_UPPER_LIMIT`|Clear upper limit (BEWARE!)
-`DEL_LOWER_LIMIT`|Clear lower limit (BEWARE!)
 
 <br>Usage:
 
@@ -254,8 +250,9 @@ Method|Description
 --|--
 `CoverManager.open()`|Open the connection<br>Called automatically if the object is used as a context manager
 `CoverManager.close()`|Close the connection<br>Called automatically if the object is used as a context manager
-`CoverManager.add_cover(tt_addr, cover)`|Add a cover to be managed<br>tt_addr is the TTBus address of the cover<br>The connection must be open so that the initial position can be requested
 `CoverManager.message_tracker()`|A coroutine that must be running in the background for the manager to be able to track cover positions
+`CoverManager.add_cover(tt_addr, cover)`|Add a cover to be managed<br>tt_addr is the TTBus address of the cover<br>The connection must be open so that the initial position can be requested
+`CoverManager.remove_covers()`|Remove all covers and clean up
 
 ## Cover
 
@@ -317,6 +314,7 @@ Method|Description
 --|--
 `TT6Cover.send_pos_request()`|Send a POS request to the controller
 `TT6Cover.send_drop_pct_command(drop_pct)`|Send a POS command to the controller to set the drop percentage of the Cover to `drop_pct`<br>`drop_pct` should be between 0.0 (fully open/down) and 1.0 (fully closed/up)<br>Out of range values for `drop_pct` will be rounded up/down accordingly
+`TT6Cover.send_hex_move_command()`|Send a POS command to the controller to set the drop percentage of the Cover to `hex_pos`<br>`hex_pos` is a value between 0x00 (fully open/down) and 0xFF (fully closed/up)
 `TT6Cover.send_close_command()`|Send a close command to the controller for the Cover
 `TT6Cover.send_open_command()`|Send an open command to the controller for the Cover
 `TT6Cover.send_preset_command(preset_num)`|Send an preset command to the controller for the Cover
@@ -326,11 +324,11 @@ Method|Description
 
 Helper class that resets a cover to idle after movement has stopped
 
-Documented here for completeness but intended to be constructed by and internal to the `CoverManager`
+Documented here for completeness but intended to be constructed by and internal to the `Cover`
 
 Most state changes of a `Cover` will be triggered by the receipt of a POS message.  The `Cover` infers that there is movement when a message is received and infers the direction from the current and previous message.   However, there is no notification that the `Cover` is idle so the `PostMovementNotifier` class detects that there has been no movement for a period and then calls `Cover.set_idle()`.  The `Cover` will then notify its observers that it is idle.
 
-The class implements the `AsyncObserver` interface and is intended to be attached to a `Cover`.  Whenever the `Cover` moves it calls `notifyObservers()` which calls `PostMovementNotifier.update()`.  A task is created that will wait for a period and then set the `Cover` to idle.   If a task was already running when the movement notification is received then the task will be cancelled and restarted.
+Whenever the `Cover` moves, there is a call to `Cover.moved()` which calls `PostMovementNotifier.moved()`.  A task is created that will wait for a period and then set the `Cover` to idle.   If a task was already running when the movement notification is received then the task will be cancelled and restarted.
 
 The task must sleep for `Cover.MOVEMENT_THRESHOLD_INTERVAL + PostMovementNotifier.POST_MOVEMENT_ALLOWANCE` seconds without being cancelled for the `Cover` to be considered idle.
 

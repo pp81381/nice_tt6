@@ -1,6 +1,7 @@
 import asyncio
-from nicett6.emulator.cover_emulator import TT6CoverEmulator
 from unittest import IsolatedAsyncioTestCase
+
+from nicett6.emulator.cover_emulator import TT6CoverEmulator
 
 
 class TestCoverMovement(IsolatedAsyncioTestCase):

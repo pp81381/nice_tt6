@@ -1,15 +1,14 @@
 import asyncio
+from unittest import IsolatedAsyncioTestCase
+from unittest.mock import MagicMock, call, patch
+
+from nicett6.consts import RCV_EOL, SEND_EOL
 from nicett6.multiplexer import (
     MultiplexerProtocol,
     MultiplexerReader,
     MultiplexerSerialConnection,
     MultiplexerWriter,
 )
-from unittest import IsolatedAsyncioTestCase
-from unittest.mock import call, MagicMock, patch
-
-RCV_EOL = b"\r"
-SEND_EOL = b"\r"
 
 
 def mock_csc_return_value(*args):
@@ -27,7 +26,8 @@ class TestConnection(IsolatedAsyncioTestCase):
         self.mock_csc = patcher.start()
 
     async def test_conn(self):
-        conn = MultiplexerSerialConnection(MultiplexerReader, MultiplexerWriter, 0.05)
+        reader_factory = lambda: MultiplexerReader[bytes](lambda x: x)
+        conn = MultiplexerSerialConnection(reader_factory, MultiplexerWriter, 0.05)
         await conn.open(RCV_EOL)
         self.mock_csc.assert_called_once()
         self.assertTrue(conn.is_open)
@@ -56,9 +56,8 @@ class TestReaderAndWriter(IsolatedAsyncioTestCase):
         )
         self.addCleanup(patcher.stop)
         self.mock_csc = patcher.start()
-        self.conn = MultiplexerSerialConnection(
-            MultiplexerReader, MultiplexerWriter, 0.05
-        )
+        reader_factory = lambda: MultiplexerReader[bytes](lambda x: x)
+        self.conn = MultiplexerSerialConnection(reader_factory, MultiplexerWriter, 0.05)
 
     async def asyncSetUp(self) -> None:
         return await self.conn.open(RCV_EOL)
@@ -107,9 +106,9 @@ class TestReaderAndWriter(IsolatedAsyncioTestCase):
         original_sleep = asyncio.sleep
 
         async def sleep_side_effect(delay):
-            await original_sleep(  # If the lock isn't working then this will allow a message to be written
-                0.2
-            )
+            # If the lock isn't working then this will allow a message to be written
+            # Not sure that this is needed anymore
+            await original_sleep(0)
             log("sleep", delay)
 
         def write_side_effect(msg):

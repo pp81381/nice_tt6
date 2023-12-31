@@ -1,7 +1,9 @@
 import unittest
+
+from nicett6.command_code import CommandCode
 from nicett6.decode import (
-    Decode,
     AckResponse,
+    Decode,
     ErrorResponse,
     HexPosResponse,
     InformationalResponse,
@@ -21,24 +23,24 @@ class TestDecoding(unittest.TestCase):
         self.assertIsInstance(res, AckResponse)
         if isinstance(res, AckResponse):
             self.assertEqual(res.tt_addr, TTBusDeviceAddress(0x03, 0x04))
-            self.assertEqual(res.cmd_code, 0x11)
+            self.assertEqual(res.cmd_code, CommandCode.MOVE_POS_6)
 
     def test_decode_cmd_response2(self):
-        """CMD_MOVE_POS response with hex_pos"""
+        """CommandCode.MOVE_POS response with hex_pos"""
         res = Decode.decode_line_bytes(b"RSP 3 4 40 7E" + self.TEST_EOL)
         self.assertIsInstance(res, HexPosResponse)
         if isinstance(res, HexPosResponse):
             self.assertEqual(res.tt_addr, TTBusDeviceAddress(0x03, 0x04))
-            self.assertEqual(res.cmd_code, 0x40)
+            self.assertEqual(res.cmd_code, CommandCode.MOVE_POS)
             self.assertEqual(res.hex_pos, 0x7E)
 
     def test_decode_cmd_response3(self):
-        """CMD_READ_POS response with hex_pos"""
+        """CommandCode.READ_POS response with hex_pos"""
         res = Decode.decode_line_bytes(b"RSP 3 4 45 7E" + self.TEST_EOL)
         self.assertIsInstance(res, HexPosResponse)
         if isinstance(res, HexPosResponse):
             self.assertEqual(res.tt_addr, TTBusDeviceAddress(0x03, 0x04))
-            self.assertEqual(res.cmd_code, 0x45)
+            self.assertEqual(res.cmd_code, CommandCode.READ_POS)
             self.assertEqual(res.hex_pos, 0x7E)
 
     def test_decode_cmd_response_err1(self):

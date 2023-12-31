@@ -1,7 +1,9 @@
 import logging
 from typing import Dict, Optional
-from nicett6.connection import open as open_tt6, TT6Connection, TT6Writer, TT6Reader
-from nicett6.cover import Cover, TT6Cover
+
+from nicett6.connection import TT6Connection, TT6Reader, TT6Writer
+from nicett6.connection import open as open_tt6
+from nicett6.cover import Cover
 from nicett6.decode import (
     AckResponse,
     HexPosResponse,
@@ -9,21 +11,8 @@ from nicett6.decode import (
     PctPosResponse,
     ResponseMessageType,
 )
-from nicett6.emulator.line_handler import (
-    CMD_MOVE_DOWN,
-    CMD_MOVE_DOWN_STEP,
-    CMD_MOVE_POS,
-    CMD_MOVE_POS_1,
-    CMD_MOVE_POS_2,
-    CMD_MOVE_POS_3,
-    CMD_MOVE_POS_4,
-    CMD_MOVE_POS_5,
-    CMD_MOVE_POS_6,
-    CMD_MOVE_UP,
-    CMD_MOVE_UP_STEP,
-    CMD_STOP,
-)
 from nicett6.multiplexer import MultiplexerSerialConnection
+from nicett6.tt6_cover import TT6Cover
 from nicett6.ttbus_device import TTBusDeviceAddress
 
 _LOGGER = logging.getLogger(__name__)
@@ -85,38 +74,6 @@ class CoverManager:
             self._conn.close()
             self._conn = None
 
-    async def _handle_response_message_for_cover(
-        self, msg: ResponseMessageType, cover: Cover
-    ) -> None:
-        if isinstance(msg, PctPosResponse):
-            await cover.set_drop_pct(msg.pct_pos / 1000.0)
-        elif isinstance(msg, PctAckResponse):
-            await cover.set_target_drop_pct_hint(msg.pct_pos / 1000.0)
-        elif isinstance(msg, AckResponse):
-            if msg.cmd_code == CMD_MOVE_UP or msg.cmd_code == CMD_MOVE_UP_STEP:
-                await cover.set_closing()
-            elif msg.cmd_code == CMD_MOVE_DOWN or msg.cmd_code == CMD_MOVE_DOWN_STEP:
-                await cover.set_opening()
-            elif msg.cmd_code == CMD_STOP:
-                # Can't call set_idle() here as a final pos
-                # response will come from the controller up to
-                # 2.5 secs after the Ack, which will call moved()
-                # again and initiate another idle delay check
-                pass
-            elif msg.cmd_code in {
-                CMD_MOVE_POS_1,
-                CMD_MOVE_POS_2,
-                CMD_MOVE_POS_3,
-                CMD_MOVE_POS_4,
-                CMD_MOVE_POS_5,
-                CMD_MOVE_POS_6,
-            }:
-                # We can't know the direction until we've received a PctPosResponse
-                await cover.moved()
-        elif isinstance(msg, HexPosResponse):
-            if msg.cmd_code == CMD_MOVE_POS:
-                await cover.set_target_drop_pct_hint(msg.hex_pos / 255.0)
-
     async def _handle_response_message(self, msg: ResponseMessageType) -> None:
         if isinstance(
             msg, (AckResponse, HexPosResponse, PctPosResponse, PctAckResponse)
@@ -126,7 +83,7 @@ class CoverManager:
             except KeyError:
                 _LOGGER.warning("response message addressed to unknown device: %s", msg)
                 return
-            await self._handle_response_message_for_cover(msg, tt6_cover.cover)
+            await tt6_cover.handle_response_message(msg)
 
     async def message_tracker(self) -> None:
         _LOGGER.debug("message_tracker started")
@@ -140,12 +97,11 @@ class CoverManager:
         if self._writer is None:
             raise RuntimeError("add_cover called when writer not initialised")
         tt6_cover = TT6Cover(tt_addr, cover, self._writer)
-        tt6_cover.enable_notifier()
         self._tt6_covers_dict[tt_addr] = tt6_cover
         await tt6_cover.send_pos_request()
         return tt6_cover
 
     async def remove_covers(self) -> None:
         for tt6_cover in self._tt6_covers_dict.values():
-            await tt6_cover.disable_notifier()
+            await tt6_cover.stop_notifier()
         self._tt6_covers_dict = {}

@@ -1,10 +1,19 @@
-import asyncio
 from unittest import IsolatedAsyncioTestCase
-from nicett6.cover import Cover, wait_for_motion_to_complete
+from unittest.mock import patch
+
+from nicett6.cover import Cover, PostMovementNotifier, wait_for_motion_to_complete
+from tests import MockSleepInstant, MockSleepManual
 
 
 class TestCover(IsolatedAsyncioTestCase):
     def setUp(self):
+        self.sleeper = MockSleepInstant()
+        pc_patcher = patch("nicett6.cover.perf_counter", self.sleeper.perf_counter)
+        sleep_patcher = patch("nicett6.cover.asyncio_sleep", self.sleeper.sleep)
+        self.mock_perf_counter = pc_patcher.start()
+        self.mock_sleep = sleep_patcher.start()
+        self.addCleanup(pc_patcher.stop)
+        self.addCleanup(sleep_patcher.stop)
         self.cover = Cover("Test", 0.8)
 
     async def test1(self):
@@ -37,7 +46,7 @@ class TestCover(IsolatedAsyncioTestCase):
         self.assertEqual(self.cover.is_moving, True)
         self.assertEqual(self.cover.is_opening, True)
         self.assertEqual(self.cover.is_closing, False)
-        await asyncio.sleep(self.cover.MOVEMENT_THRESHOLD_INTERVAL + 0.1)
+        await self.mock_sleep(Cover.MOVEMENT_THRESHOLD_INTERVAL + 0.1)
         self.assertEqual(self.cover.is_closed, False)
         self.assertEqual(self.cover.is_moving, False)
         self.assertEqual(self.cover.is_opening, False)
@@ -51,7 +60,7 @@ class TestCover(IsolatedAsyncioTestCase):
         self.assertEqual(self.cover.is_moving, True)
         self.assertEqual(self.cover.is_opening, False)
         self.assertEqual(self.cover.is_closing, True)
-        await asyncio.sleep(self.cover.MOVEMENT_THRESHOLD_INTERVAL + 0.1)
+        await self.mock_sleep(Cover.MOVEMENT_THRESHOLD_INTERVAL + 0.1)
         self.assertEqual(self.cover.is_closed, True)
         self.assertEqual(self.cover.is_moving, False)
         self.assertEqual(self.cover.is_opening, False)
@@ -105,19 +114,12 @@ class TestCover(IsolatedAsyncioTestCase):
             with self.subTest(name):
                 if drop_pct_to_set is not None:
                     await self.cover.set_drop_pct(drop_pct_to_set)
-                await asyncio.sleep(sleep_before_check)
+                await self.mock_sleep(sleep_before_check)
                 self.assertAlmostEqual(self.cover.drop_pct, drop_pct)
                 self.assertEqual(self.cover.is_closed, is_closed)
                 self.assertEqual(self.cover.is_moving, is_moving)
                 self.assertEqual(self.cover.is_opening, is_opening)
                 self.assertEqual(self.cover.is_closing, is_closing)
-
-    async def test_wait_for_motion_to_complete(self):
-        self.assertFalse(self.cover.is_moving)
-        await self.cover.moved()
-        self.assertTrue(self.cover.is_moving)
-        await wait_for_motion_to_complete([self.cover])
-        self.assertFalse(self.cover.is_moving)
 
     async def test10(self):
         self.assertTrue(self.cover.is_closed)
@@ -130,7 +132,7 @@ class TestCover(IsolatedAsyncioTestCase):
         self.assertTrue(self.cover.is_moving)
         self.assertTrue(self.cover.is_opening)
         self.assertFalse(self.cover.is_closing)
-        await asyncio.sleep(self.cover.MOVEMENT_THRESHOLD_INTERVAL + 0.01)
+        await self.mock_sleep(Cover.MOVEMENT_THRESHOLD_INTERVAL + 0.01)
         self.assertAlmostEqual(self.cover._prev_drop_pct, 1.0)  #!!
         self.assertFalse(self.cover.is_closed)
         self.assertFalse(self.cover.is_moving)
@@ -184,7 +186,7 @@ class TestCover(IsolatedAsyncioTestCase):
 
     async def test14(self):
         await self.cover.set_drop_pct(0.0)
-        await asyncio.sleep(self.cover.MOVEMENT_THRESHOLD_INTERVAL + 0.01)
+        await self.mock_sleep(Cover.MOVEMENT_THRESHOLD_INTERVAL + 0.01)
         self.assertFalse(self.cover.is_closed)
         self.assertFalse(self.cover.is_moving)
         self.assertFalse(self.cover.is_opening)
@@ -194,3 +196,90 @@ class TestCover(IsolatedAsyncioTestCase):
         self.assertTrue(self.cover.is_moving)
         self.assertFalse(self.cover.is_opening)
         self.assertTrue(self.cover.is_closing)
+
+
+class TestCoverNotifer(IsolatedAsyncioTestCase):
+    async def test1(self):
+        """Test the notifier"""
+
+        sleeper = MockSleepInstant()
+        manual_sleeper = MockSleepManual()
+        with patch("nicett6.cover.asyncio_sleep", sleeper.sleep) as mock_sleep, patch(
+            "nicett6.cover.perf_counter", sleeper.perf_counter
+        ), patch("nicett6.cover.notifier_asyncio_sleep", manual_sleeper.sleep):
+            cover = Cover("Test", 0.8)
+
+            self.assertTrue(cover.is_closed)
+            self.assertFalse(cover.is_moving)
+            self.assertFalse(cover.is_opening)
+            self.assertFalse(cover.is_closing)
+            self.assertIsNone(cover._notifier._task)
+
+            # moved() should start task; we also know direction immediately
+            await cover.set_drop_pct(0.8)
+            self.assertAlmostEqual(cover._prev_drop_pct, 1.0)
+            self.assertFalse(cover.is_closed)
+            self.assertTrue(cover.is_moving)
+            self.assertTrue(cover.is_opening)
+            self.assertFalse(cover.is_closing)
+            self.assertIsNotNone(cover._notifier._task)
+            if cover._notifier._task is not None:
+                self.assertFalse(cover._notifier._task.done())
+
+            # wait for motion to to complete but task still running
+            await mock_sleep(Cover.MOVEMENT_THRESHOLD_INTERVAL + 0.01)
+            self.assertAlmostEqual(
+                cover._prev_drop_pct, 1.0
+            )  # set_idle() not called yet
+            self.assertFalse(cover.is_closed)
+            self.assertFalse(cover.is_moving)
+            self.assertFalse(cover.is_opening)
+            self.assertFalse(cover.is_closing)
+            self.assertIsNotNone(cover._notifier._task)
+            if cover._notifier._task is not None:
+                self.assertFalse(cover._notifier._task.done())
+
+            # tell notifier sleep to complete so that task completes
+            await mock_sleep(PostMovementNotifier.POST_MOVEMENT_ALLOWANCE + 0.02)
+            await manual_sleeper.wake()
+            await cover.idle_event.wait()
+            self.assertAlmostEqual(cover._prev_drop_pct, 0.8)
+            self.assertFalse(cover.is_closed)
+            self.assertFalse(cover.is_moving)
+            self.assertFalse(cover.is_opening)
+            self.assertFalse(cover.is_closing)
+            self.assertIsNotNone(cover._notifier._task)
+            if cover._notifier._task is not None:
+                self.assertTrue(cover._notifier._task.done())
+
+            # Flag that we are moving - however, we don't know the direction yet (restarts background task)
+            await cover.moved()
+            self.assertAlmostEqual(cover._prev_drop_pct, 0.8)
+            self.assertFalse(cover.is_closed)
+            self.assertTrue(cover.is_moving)
+            self.assertFalse(cover.is_opening)
+            self.assertFalse(cover.is_closing)
+
+            self.assertIsNotNone(cover._notifier._task)
+            if cover._notifier._task is not None:
+                self.assertFalse(cover._notifier._task.done())
+            await cover.stop_notifier()
+            self.assertIsNotNone(cover._notifier._task)
+            if cover._notifier._task is not None:
+                self.assertTrue(cover._notifier._task.done())
+
+
+class TestWaitForMotionToComplete(IsolatedAsyncioTestCase):
+    async def test_wait_for_motion_to_complete(self):
+        sleeper = MockSleepInstant()
+        with patch("nicett6.cover.asyncio_sleep", sleeper.sleep), patch(
+            "nicett6.cover.perf_counter", sleeper.perf_counter
+        ):
+            cover = Cover("Test", 0.8)
+            self.assertFalse(cover.is_moving)
+            await cover.moved()
+            self.assertTrue(cover.is_moving)
+            self.assertAlmostEqual(sleeper.offset, 0.0)
+            await wait_for_motion_to_complete([cover])
+            self.assertAlmostEqual(sleeper.offset, 2.8)
+            self.assertFalse(cover.is_moving)

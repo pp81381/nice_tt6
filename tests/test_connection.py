@@ -1,10 +1,11 @@
-from nicett6.decode import AckResponse
-from nicett6.connection import TT6Writer, open_connection
-from nicett6.ttbus_device import TTBusDeviceAddress
 from unittest import IsolatedAsyncioTestCase
 from unittest.mock import MagicMock, patch
 
-RCV_EOL = b"\r"
+from nicett6.command_code import CommandCode
+from nicett6.connection import TT6Writer, open_connection
+from nicett6.consts import RCV_EOL
+from nicett6.decode import AckResponse
+from nicett6.ttbus_device import TTBusDeviceAddress
 
 
 def mock_csc_return_value(*args, **kwargs):
@@ -30,7 +31,7 @@ class TestReaderAndWriter(IsolatedAsyncioTestCase):
             res = messages[0]
             self.assertIsInstance(res, AckResponse)
             self.assertEqual(res.tt_addr, TTBusDeviceAddress(0x03, 0x04))
-            self.assertEqual(res.cmd_code, 0x11)
+            self.assertEqual(res.cmd_code, CommandCode.MOVE_POS_6)
 
     async def test_writer(self):
         async with open_connection() as conn:

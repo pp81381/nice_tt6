@@ -1,10 +1,11 @@
-from nicett6.emulator.config import build_config, default_config_file
-from nicett6.emulator.cover_emulator import percent_pos_to_step_num
-from nicett6.emulator.line_handler import PRESET_POS_5
 from contextlib import redirect_stderr
 from io import StringIO
 from unittest import TestCase
-from unittest.mock import patch, mock_open
+from unittest.mock import mock_open, patch
+
+from nicett6.emulator.config import build_config, default_config_file
+from nicett6.emulator.controller.line_handler import PRESET_POS_5
+from nicett6.emulator.cover_emulator import percent_pos_to_step_num
 
 
 class TestConfig(TestCase):

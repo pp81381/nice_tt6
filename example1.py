@@ -1,11 +1,12 @@
 import asyncio
 import logging
+
+from nicett6.ciw_manager import CIWAspectRatioMode, CIWManager
 from nicett6.cover import Cover
 from nicett6.cover_manager import CoverManager
-from nicett6.ciw_helper import ImageDef
-from nicett6.ciw_manager import CIWAspectRatioMode, CIWManager
+from nicett6.image_def import ImageDef
 from nicett6.ttbus_device import TTBusDeviceAddress
-from nicett6.utils import run_coro_after_delay, parse_example_args
+from nicett6.utils import parse_example_args, run_coro_after_delay
 
 _LOGGER = logging.getLogger(__name__)
 

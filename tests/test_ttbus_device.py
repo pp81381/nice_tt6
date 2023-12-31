@@ -1,4 +1,5 @@
 import unittest
+
 from nicett6.ttbus_device import TTBusDeviceAddress
 
 

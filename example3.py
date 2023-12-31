@@ -1,6 +1,7 @@
 import argparse
 import asyncio
 import logging
+
 from nicett6.cover import Cover, wait_for_motion_to_complete
 from nicett6.cover_manager import CoverManager
 from nicett6.ttbus_device import TTBusDeviceAddress

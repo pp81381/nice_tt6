@@ -1,16 +1,15 @@
-from contextlib import asynccontextmanager
 import logging
+from contextlib import asynccontextmanager
 from typing import Optional
-from nicett6.decode import Decode
-from nicett6.encode import Encode
-from nicett6.utils import async_get_platform_serial_port
-from nicett6.multiplexer import (
-    MultiplexerReader,
-    MultiplexerSerialConnection as TT6Connection,
-    MultiplexerWriter,
-)
+
 from serial import PARITY_NONE, STOPBITS_ONE  # type: ignore
 
+from nicett6.decode import Decode, ResponseMessageType
+from nicett6.encode import Encode
+from nicett6.multiplexer import MultiplexerReader
+from nicett6.multiplexer import MultiplexerSerialConnection as TT6Connection
+from nicett6.multiplexer import MultiplexerWriter
+from nicett6.utils import async_get_platform_serial_port
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -39,9 +38,9 @@ async def open(serial_port: Optional[str] = None) -> TT6Connection:
     return conn
 
 
-class TT6Reader(MultiplexerReader):
-    def decode(self, data):
-        return Decode.decode_line_bytes(data)
+class TT6Reader(MultiplexerReader[ResponseMessageType]):
+    def __init__(self):
+        super().__init__(Decode.decode_line_bytes)
 
 
 class TT6Writer(MultiplexerWriter):
@@ -53,9 +52,9 @@ class TT6Writer(MultiplexerWriter):
         _LOGGER.debug(f"send_web_off")
         await self.write(Encode.web_off())
 
-    async def send_simple_command(self, tt_addr, cmd_code):
-        _LOGGER.debug(f"send_simple_command {cmd_code} to {tt_addr}")
-        await self.write(Encode.simple_command(tt_addr, cmd_code))
+    async def send_simple_command(self, tt_addr, cmd_name):
+        _LOGGER.debug(f"send_simple_command {cmd_name} to {tt_addr}")
+        await self.write(Encode.simple_command(tt_addr, cmd_name))
 
     async def send_hex_move_command(self, tt_addr, hex_pos):
         _LOGGER.debug(f"send_hex_move_command {hex_pos} to {tt_addr}")

@@ -2,7 +2,8 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 from typing import Callable, Union
-from nicett6.emulator.line_handler import CMD_READ_POS, CMD_MOVE_POS
+
+from nicett6.command_code import CommandCode
 from nicett6.ttbus_device import TTBusDeviceAddress
 from nicett6.utils import hex_arg_to_int, pct_arg_to_int
 
@@ -14,20 +15,20 @@ class InvalidResponseError(Exception):
 @dataclass
 class AckResponse:
     tt_addr: TTBusDeviceAddress
-    cmd_code: int
+    cmd_code: CommandCode
 
     def __repr__(self):
-        return f"{type(self).__name__}({self.tt_addr}, {self.cmd_code:02X})"
+        return f"{type(self).__name__}({self.tt_addr}, {self.cmd_code})"
 
 
 @dataclass
 class HexPosResponse:
     tt_addr: TTBusDeviceAddress
-    cmd_code: int
+    cmd_code: CommandCode
     hex_pos: int
 
     def __repr__(self):
-        return f"{type(self).__name__}({self.tt_addr}, {self.cmd_code:02X}, {self.hex_pos:02X})"
+        return f"{type(self).__name__}({self.tt_addr}, {self.cmd_code}, {self.hex_pos:02X})"
 
 
 @dataclass
@@ -80,10 +81,10 @@ def _decode_cmd_response(args: list[str]) -> ResponseMessageType:
     tt_addr = TTBusDeviceAddress(
         hex_arg_to_int(args[0], False), hex_arg_to_int(args[1], False)
     )
-    cmd_code = hex_arg_to_int(args[2], False)
+    cmd_code: CommandCode = CommandCode(hex_arg_to_int(args[2], False))
     if len(args) == 3:
         return AckResponse(tt_addr, cmd_code)
-    elif len(args) == 4 and cmd_code in {CMD_READ_POS, CMD_MOVE_POS}:
+    elif len(args) == 4 and cmd_code in {CommandCode.READ_POS, CommandCode.MOVE_POS}:
         hex_pos = hex_arg_to_int(args[3], False)
         return HexPosResponse(tt_addr, cmd_code, hex_pos)
     else:

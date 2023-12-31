@@ -1,37 +1,13 @@
-from contextlib import contextmanager
 import logging
 import math
+from contextlib import contextmanager
 from typing import Generator, Optional
 
 from nicett6.cover import Cover
-from nicett6.utils import AsyncObservable, AsyncObserver, check_aspect_ratio
+from nicett6.image_def import ImageDef
+from nicett6.utils import AsyncObservable, AsyncObserver
 
 _LOGGER = logging.getLogger(__name__)
-
-
-class ImageDef:
-    """Static definition of image area relative to the bottom of a cover"""
-
-    def __init__(
-        self,
-        bottom_border_height: float,
-        height: float,
-        aspect_ratio: float,
-    ):
-        self.bottom_border_height = bottom_border_height
-        self.height = height
-        self.aspect_ratio = aspect_ratio
-
-    @property
-    def width(self) -> float:
-        return self.height * self.aspect_ratio
-
-    def implied_image_height(self, target_aspect_ratio: float) -> float:
-        check_aspect_ratio(target_aspect_ratio)
-        image_height = self.width / target_aspect_ratio
-        if image_height > self.height:
-            image_height = self.height
-        return image_height
 
 
 class CIWHelper:

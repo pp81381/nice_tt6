@@ -1,8 +1,10 @@
-from enum import Enum
 import logging
+from enum import Enum
 
-from nicett6.cover import Cover, TT6Cover, wait_for_motion_to_complete
-from nicett6.ciw_helper import CIWHelper, ImageDef
+from nicett6.ciw_helper import CIWHelper
+from nicett6.cover import Cover, wait_for_motion_to_complete
+from nicett6.image_def import ImageDef
+from nicett6.tt6_cover import TT6Cover
 from nicett6.utils import MAX_ASPECT_RATIO
 
 _LOGGER = logging.getLogger(__name__)

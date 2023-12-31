@@ -1,10 +1,11 @@
-from unittest import TestCase, IsolatedAsyncioTestCase
+from unittest import IsolatedAsyncioTestCase, TestCase
+
 from nicett6.utils import (
+    async_get_platform_serial_port,
+    check_aspect_ratio,
     get_platform_serial_port,
     hex_arg_to_int,
     pct_arg_to_int,
-    async_get_platform_serial_port,
-    check_aspect_ratio,
 )
 
 

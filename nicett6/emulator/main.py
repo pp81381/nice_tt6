@@ -1,4 +1,5 @@
 import asyncio
+
 from nicett6.emulator.config import build_config
 from nicett6.emulator.controller import make_tt6controller
 

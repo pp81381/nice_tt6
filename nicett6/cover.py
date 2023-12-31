@@ -1,10 +1,10 @@
-import asyncio
 import logging
-from typing import Optional
-from nicett6.ttbus_device import TTBusDeviceAddress
-from nicett6.connection import TT6Writer
-from nicett6.utils import AsyncObservable, AsyncObserver, check_pct
-import time
+from asyncio import CancelledError, Event, Lock, Task, create_task
+from asyncio import sleep as asyncio_sleep
+from asyncio import sleep as notifier_asyncio_sleep
+from time import perf_counter
+
+from nicett6.utils import AsyncObservable, check_pct
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -22,8 +22,11 @@ class Cover(AsyncObservable):
         self.name = name
         self.max_drop = max_drop
         self._drop_pct = 1.0
-        self._prev_movement = time.perf_counter() - self.MOVEMENT_THRESHOLD_INTERVAL
+        self._prev_movement = perf_counter() - self.MOVEMENT_THRESHOLD_INTERVAL
         self._prev_drop_pct = self._drop_pct
+        self._notifier = PostMovementNotifier(self)
+        self.idle_event = Event()
+        self.idle_event.set()
 
     def __repr__(self):
         return (
@@ -63,14 +66,21 @@ class Cover(AsyncObservable):
 
     async def moved(self):
         """Called to indicate movement"""
-        self._prev_movement = time.perf_counter()
+        self._prev_movement = perf_counter()
+        self.idle_event.clear()
+        await self._notifier.moved()
         await self.notify_observers()
 
     async def set_idle(self):
         """Called to indicate that movement has finished"""
         self._prev_drop_pct = self._drop_pct
-        self._prev_movement = time.perf_counter() - self.MOVEMENT_THRESHOLD_INTERVAL
+        self._prev_movement = perf_counter() - self.MOVEMENT_THRESHOLD_INTERVAL
+        self.idle_event.set()
         await self.notify_observers()
+
+    async def wait_idle(self):
+        _LOGGER.debug(f"State of idle_event is {self.idle_event.is_set()}")
+        await self.idle_event.wait()
 
     @property
     def is_moving(self):
@@ -80,10 +90,7 @@ class Cover(AsyncObservable):
         When initiating movement, call self.moved() so that self.is_moving
         will be meaningful before the first POS message comes back from the cover
         """
-        return (
-            time.perf_counter() - self._prev_movement
-            <= self.MOVEMENT_THRESHOLD_INTERVAL
-        )
+        return perf_counter() - self._prev_movement < self.MOVEMENT_THRESHOLD_INTERVAL
 
     @property
     def is_closed(self):
@@ -127,49 +134,8 @@ class Cover(AsyncObservable):
         elif target_drop_pct > self._drop_pct:
             await self.set_closing()
 
-
-class TT6Cover:
-    """Class that sends commands to a `Cover` that is connected to the TTBus"""
-
-    def __init__(self, tt_addr: TTBusDeviceAddress, cover: Cover, writer: TT6Writer):
-        self.tt_addr: TTBusDeviceAddress = tt_addr
-        self.cover: Cover = cover
-        self.writer: TT6Writer = writer
-        self._notifier = PostMovementNotifier(cover)
-
-    def enable_notifier(self):
-        self._notifier.enable()
-
-    async def disable_notifier(self):
-        await self._notifier.disable()
-
-    async def send_pos_request(self):
-        await self.writer.send_web_pos_request(self.tt_addr)
-
-    async def send_drop_pct_command(self, drop_pct):
-        _LOGGER.debug(f"moving {self.cover.name} to {drop_pct}")
-        await self.writer.send_web_move_command(self.tt_addr, drop_pct)
-
-    async def send_hex_move_command(self, hex_pos: int):
-        _LOGGER.debug(f"moving {self.cover.name} to hex pos {hex_pos}")
-        await self.writer.send_hex_move_command(self.tt_addr, hex_pos)
-
-    async def send_close_command(self):
-        _LOGGER.debug(f"sending MOVE_UP to {self.cover.name}")
-        await self.writer.send_simple_command(self.tt_addr, "MOVE_UP")
-
-    async def send_open_command(self):
-        _LOGGER.debug(f"sending MOVE_DOWN to {self.cover.name}")
-        await self.writer.send_simple_command(self.tt_addr, "MOVE_DOWN")
-
-    async def send_preset_command(self, preset_num: int):
-        preset_command = f"MOVE_POS_{preset_num:d}"
-        _LOGGER.debug(f"sending {preset_command} to {self.cover.name}")
-        await self.writer.send_simple_command(self.tt_addr, preset_command)
-
-    async def send_stop_command(self):
-        _LOGGER.debug(f"sending STOP to {self.cover.name}")
-        await self.writer.send_simple_command(self.tt_addr, "STOP")
+    async def stop_notifier(self):
+        await self._notifier.cancel_task()
 
 
 async def wait_for_motion_to_complete(covers):
@@ -178,52 +144,49 @@ async def wait_for_motion_to_complete(covers):
 
     Make sure that Cover.moving() is called when movement
     is initiated for this method to work reliably
-    (see CoverManager._handle_response_message_for_cover)
+    (see TT6Cover.handle_response_message)
     Has the side effect of notifying observers of the idle state
     """
     while True:
-        await asyncio.sleep(POLLING_INTERVAL)
+        await asyncio_sleep(POLLING_INTERVAL)
         if all([not cover.is_moving for cover in covers]):
             return
 
 
-class PostMovementNotifier(AsyncObserver):
-    """Invokes set_idle (and hence notify_observers) one last time after movement stops"""
+class PostMovementNotifier:
+    """
+    Invokes set_idle (and hence notify_observers) one last time after movement stops
+
+    The cover is considered idle if it hasn't moved for
+    Cover.MOVEMENT_THRESHOLD_INTERVAL + PostMovementNotifier.POST_MOVEMENT_ALLOWANCE seconds
+    """
 
     POST_MOVEMENT_ALLOWANCE = 0.05
 
-    def __init__(self, cover: Cover):
-        super().__init__()
-        self._task_lock: asyncio.Lock = asyncio.Lock()
-        self._task: Optional[asyncio.Task] = None
-        self.cover: Cover = cover
+    def __init__(self, cover: Cover) -> None:
+        self.cover = cover
+        self._task_lock: Lock = Lock()
+        self._task: Task | None = None
 
-    def enable(self):
-        self.cover.attach(self)
+    async def moved(self) -> None:
+        """
+        Manage a task that will call set_idle on the cover after a short delay
 
-    async def disable(self):
-        self.cover.detach(self)
-        await self.cleanup()
-
-    async def update(self, observable: AsyncObservable) -> None:
-        """Reset the task if the state of the Cover changes"""
+        Reset the task if movement happens again while a task is running
+        """
         async with self._task_lock:
             await self._cancel_task()
-            if (
-                self.cover.is_moving
-            ):  # Only need a new task if moving, plus avoid recursion
-                self._task = asyncio.create_task(self._set_idle_after_delay())
-                self.cover.log("PostMovementNotifier task started", logging.DEBUG)
+            self._task = create_task(self._set_idle_after_delay())
+            self.cover.log("PostMovementNotifier task started", logging.DEBUG)
 
-    async def _set_idle_after_delay(self):
-        await asyncio.sleep(
-            self.cover.MOVEMENT_THRESHOLD_INTERVAL + self.POST_MOVEMENT_ALLOWANCE
+    async def _set_idle_after_delay(self) -> None:
+        await notifier_asyncio_sleep(
+            Cover.MOVEMENT_THRESHOLD_INTERVAL + self.POST_MOVEMENT_ALLOWANCE
         )
         await self.cover.set_idle()
-        self.cover.log("PostMovementNotifier sent idle", logging.DEBUG)
+        self.cover.log("PostMovementNotifier set to idle", logging.DEBUG)
 
-    async def cleanup(self):
-        _LOGGER.debug(f"PostMovementNotifier cleanup")
+    async def cancel_task(self):
         async with self._task_lock:
             await self._cancel_task()
 
@@ -231,10 +194,8 @@ class PostMovementNotifier(AsyncObserver):
         """Cancel task - make sure you have acquired the lock first"""
         if self._task is not None:
             if not self._task.done():
-                _LOGGER.debug(f"PostMovementNotifier cancelling an active task")
                 self._task.cancel()
-                try:
-                    await self._task
-                except asyncio.CancelledError:
-                    pass
-                self._task = None
+            try:
+                await self._task
+            except CancelledError:
+                pass

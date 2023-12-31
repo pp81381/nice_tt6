@@ -1,47 +1,52 @@
 import asyncio
-from typing import Callable, Optional
-from nicett6.buffer import MessageBuffer
 import logging
+from collections.abc import AsyncIterator
+from typing import Awaitable, Callable, List, Optional, TypeVar
+from weakref import WeakSet
+
 from serial_asyncio_fast import create_serial_connection  # type: ignore[import-untyped]
-import weakref
+
+from nicett6.buffer import MessageBuffer
 
 _LOGGER = logging.getLogger(__name__)
+
+T = TypeVar("T")
 
 
 class MultiplexerReaderStopSentinel:
     pass
 
 
-class MultiplexerReader:
-    """Base class for Readers"""
+class MultiplexerReader(AsyncIterator[T]):
+    """Generic class for Readers"""
 
-    def __init__(self):
-        self.queue = asyncio.Queue()
-        self.is_stopped = False
-        self.is_iterated = False
+    def __init__(self, decoder: Callable[[bytes], T]) -> None:
+        self.queue: asyncio.Queue[T | MultiplexerReaderStopSentinel] = asyncio.Queue()
+        self.is_stopped: bool = False
+        self.is_iterated: bool = False
+        self.decoder = decoder
 
-    def message_received(self, msg):
+    def message_received(self, msg: bytes) -> None:
         if not self.is_stopped:
             decoded_msg = self.decode(msg)
             self.queue.put_nowait(decoded_msg)
 
-    def decode(self, data):
-        """Override this method if needed"""
-        return data
+    def decode(self, data: bytes) -> T:
+        return self.decoder(data)
 
-    def connection_lost(self, exc):
+    def connection_lost(self, exc: Exception | None):
         if not self.is_stopped:
             self.stop()
 
-    def stop(self):
+    def stop(self) -> None:
         if not self.is_stopped:
             self.is_stopped = True
             self.queue.put_nowait(MultiplexerReaderStopSentinel())
 
-    def __aiter__(self):
+    def __aiter__(self) -> AsyncIterator[T]:
         return self
 
-    async def __anext__(self):
+    async def __anext__(self) -> T:
         if self.is_iterated:
             raise RuntimeError("MultiplexerReader cannot be iterated twice")
         item = await self.queue.get()
@@ -54,18 +59,18 @@ class MultiplexerReader:
 class MultiplexerWriter:
     """Base class for Writers"""
 
-    def __init__(self, conn):
+    def __init__(self, conn: "MultiplexerSerialConnection") -> None:
         self.conn = conn
         self.send_lock = asyncio.Lock()
 
-    async def write(self, msg):
+    async def write(self, msg: bytes) -> None:
         assert self.conn.is_open
         async with self.send_lock:
-            _LOGGER.debug(f"Writing message {msg}")
+            _LOGGER.debug(f"Writing message {msg!r}")
             self.conn.transport.write(msg)
             await asyncio.sleep(self.conn.post_write_delay)
 
-    async def process_request(self, coro, time_window=1.0):
+    async def process_request(self, coro: Awaitable[None], time_window: float = 1.0):
         """
         Send a command and collect the response messages that arrive in time_window
 
@@ -76,7 +81,7 @@ class MultiplexerWriter:
         Note that there could be unrelated messages received if web commands are on
         or if another command has just been submitted
         """
-        reader = self.conn.add_reader()
+        reader: MultiplexerReader = self.conn.add_reader()
         await coro
         await asyncio.sleep(time_window)
         self.conn.remove_reader(reader)
@@ -84,21 +89,21 @@ class MultiplexerWriter:
 
 
 class MultiplexerProtocol(asyncio.Protocol):
-    def __init__(self, eol):
-        self.readers = weakref.WeakSet()
-        self.buf = MessageBuffer(eol)
+    def __init__(self, eol: bytes) -> None:
+        self.readers: WeakSet[MultiplexerReader] = WeakSet()
+        self.buf: MessageBuffer = MessageBuffer(eol)
 
-    def connection_made(self, transport):
+    def connection_made(self, transport: asyncio.BaseTransport) -> None:
         _LOGGER.info("Connection made")
 
-    def data_received(self, chunk):
-        messages = self.buf.append_chunk(chunk)
+    def data_received(self, chunk: bytes) -> None:
+        messages: List[bytes] = self.buf.append_chunk(chunk)
         for msg in messages:
             _LOGGER.debug(f"data_received: %r", msg)
             for r in self.readers:
                 r.message_received(msg)
 
-    def connection_lost(self, exc):
+    def connection_lost(self, exc: Exception | None) -> None:
         if self.buf.buf != b"":
             _LOGGER.warn(
                 "Connection lost with partial message in buffer: %r", self.buf.buf
@@ -115,7 +120,7 @@ class MultiplexerSerialConnection:
         reader_factory: Callable[[], MultiplexerReader],
         writer_factory: Callable[["MultiplexerSerialConnection"], MultiplexerWriter],
         post_write_delay: float = 0,
-    ):
+    ) -> None:
         self.reader_factory = reader_factory
         self.writer_factory = writer_factory
         self.post_write_delay = post_write_delay
@@ -165,7 +170,7 @@ class MultiplexerSerialConnection:
     def get_writer(self) -> MultiplexerWriter:
         return self.writer_factory(self)
 
-    def close(self):
+    def close(self) -> None:
         if self._transport is not None:
             self._transport.close()
             self._transport = None

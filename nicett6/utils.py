@@ -1,11 +1,12 @@
 """ Misc utilities. """
 
-import asyncio
 import argparse
+import asyncio
 import logging
 import platform
 import re
-from typing import Set
+from collections.abc import Awaitable, Callable
+from typing import Coroutine, Sequence, Set, Tuple
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -14,7 +15,7 @@ MAX_ASPECT_RATIO = 3.5
 PCT_ABS_TOL = 0.0000001
 
 
-def get_system_serial_port(system):
+def get_system_serial_port(system: str) -> str:
     """Work out the most likely serial port given the type of system. YMMV."""
     if system == "Windows":
         return "COM3"
@@ -24,19 +25,19 @@ def get_system_serial_port(system):
         raise ValueError("Invalid system - unable to determine serial_port")
 
 
-def get_platform_serial_port():
+def get_platform_serial_port() -> str:
     """Work out the most likely serial port given the platform"""
     return get_system_serial_port(platform.system())
 
 
-async def async_get_platform_serial_port():
+async def async_get_platform_serial_port() -> str:
     """Work out the most likely serial port given the platform without blocking"""
     loop = asyncio.get_running_loop()
     system = await loop.run_in_executor(None, platform.system)
     return get_system_serial_port(system)
 
 
-def hex_arg_to_int(arg, fixed_len=True):
+def hex_arg_to_int(arg: str, fixed_len: bool = True) -> int:
     """Parse and convert a 2 char hex string"""
     if fixed_len:
         pat = re.compile("[a-fA-F0-9]{2,2}$")
@@ -48,7 +49,7 @@ def hex_arg_to_int(arg, fixed_len=True):
     return int(m.group(0), 16)
 
 
-def pct_arg_to_int(arg):
+def pct_arg_to_int(arg: str) -> int:
     """Parse a numeric string that represents a percentage in units of 0.1%.  1000 == 100%"""
     pat = re.compile("[0-9]{4,4}$")
     m = pat.match(arg)
@@ -91,14 +92,16 @@ def check_aspect_ratio(aspect_ratio: float) -> None:
         raise ValueError(f"Aspect ratio ({aspect_ratio}) is not sensible")
 
 
-async def run_coro_after_delay(coro, delay=2.0):
+async def run_coro_after_delay(coro: Awaitable[None], delay: float = 2.0):
     _LOGGER.info("run_coro_after_delay started")
     await asyncio.sleep(delay)
     await coro
     _LOGGER.info("run_coro_after_delay completed")
 
 
-def parse_example_args(examples):
+def parse_example_args(
+    examples: Sequence[Tuple[str, Callable[..., Coroutine[None, None, None]]]]
+) -> Tuple[str, Callable[..., Coroutine[None, None, None]]]:
     default_example = examples[0][0]
     examples_dict = dict(examples)
     parser = argparse.ArgumentParser()

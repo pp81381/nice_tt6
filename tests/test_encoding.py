@@ -1,10 +1,10 @@
 import unittest
-from nicett6.ttbus_device import TTBusDeviceAddress
+
 from nicett6.encode import Encode
+from nicett6.ttbus_device import TTBusDeviceAddress
 
 
 class TestEncoding(unittest.TestCase):
-
     TEST_EOL = Encode.EOL
 
     def setUp(self):

@@ -1,7 +1,8 @@
 import argparse
 import json
-from nicett6.emulator.cover_emulator import TT6CoverEmulator
-from nicett6.emulator.line_handler import (
+from pathlib import PurePath
+
+from nicett6.emulator.controller.line_handler import (
     PRESET_POS_1,
     PRESET_POS_2,
     PRESET_POS_3,
@@ -9,8 +10,8 @@ from nicett6.emulator.line_handler import (
     PRESET_POS_5,
     PRESET_POS_6,
 )
+from nicett6.emulator.cover_emulator import TT6CoverEmulator
 from nicett6.ttbus_device import TTBusDeviceAddress
-from pathlib import PurePath
 
 
 def tt6cover_from_dict(d):

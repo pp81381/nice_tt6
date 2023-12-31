@@ -1,18 +1,19 @@
 import asyncio
 import logging
 from contextlib import AsyncExitStack
+
 from nicett6.utils import AsyncObservable
 
 _LOGGER = logging.getLogger(__name__)
 
 
 def percent_pos_to_step_num(percent_pos, max_steps):
-    """ Calculate step number from percentage position.   Note that 100% means fully up."""
+    """Calculate step number from percentage position.   Note that 100% means fully up."""
     return round((1 - percent_pos) * max_steps)
 
 
 def step_num_to_percent_pos(step_num, max_steps):
-    """ Calculate percentage position from step number.   Note that 100% means fully up."""
+    """Calculate percentage position from step number.   Note that 100% means fully up."""
     return (max_steps - step_num) / max_steps
 
 
@@ -239,21 +240,17 @@ class TT6CoverEmulator(AsyncObservable):
         if preset_name in self.presets:
             await self.move_to_step_num(self.presets[preset_name])
 
-    def store_preset(self, preset_name):
+    async def store_preset(self, preset_name):
         self.presets[preset_name] = self.step_num
 
-    def del_preset(self, preset_name):
+    async def del_preset(self, preset_name):
         if preset_name in self.presets:
             del self.presets[preset_name]
 
-    def store_upper_limit(self):
-        raise NotImplementedError()  # Cover will require some refactoring to support this
+    def fmt_pos_msg(self) -> str:
+        scaled_pct_pos: int = round(self.percent_pos * 1000)
+        return f"POS * {self.tt_addr.address:02X} {self.tt_addr.node:02X} {scaled_pct_pos:04d} FFFF FF"
 
-    def del_upper_limit(self):
-        raise NotImplementedError()  # Cover will require some refactoring to support this
-
-    def store_lower_limit(self):
-        raise NotImplementedError()  # Cover will require some refactoring to support this
-
-    def del_lower_limit(self):
-        raise NotImplementedError()  # Cover will require some refactoring to support this
+    def fmt_ack_msg(self, target_pct_pos: float) -> str:
+        scaled_pct_pos: int = round(target_pct_pos * 1000)
+        return f"POS # {self.tt_addr.address:02X} {self.tt_addr.node:02X} {scaled_pct_pos:04d} FFFF FF"

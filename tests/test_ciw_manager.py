@@ -1,20 +1,22 @@
 import asyncio
 from logging import WARNING
-from tests import make_mock_conn
-from nicett6.ciw_helper import CIWHelper, ImageDef
+from unittest import IsolatedAsyncioTestCase, TestCase
+from unittest.mock import call, patch
+
+from nicett6.ciw_helper import CIWHelper
 from nicett6.ciw_manager import (
-    CIWManager,
     CIWAspectRatioMode,
+    CIWManager,
     calculate_new_drops,
     check_baseline_drop,
 )
-from nicett6.cover import Cover, POLLING_INTERVAL
+from nicett6.cover import POLLING_INTERVAL, Cover
 from nicett6.cover_manager import CoverManager
 from nicett6.decode import PctPosResponse
+from nicett6.image_def import ImageDef
 from nicett6.ttbus_device import TTBusDeviceAddress
 from nicett6.utils import run_coro_after_delay
-from unittest import IsolatedAsyncioTestCase, TestCase
-from unittest.mock import call, patch
+from tests import make_mock_conn
 
 TEST_READER_POS_RESPONSE = [
     PctPosResponse(TTBusDeviceAddress(0x02, 0x04), 110),
