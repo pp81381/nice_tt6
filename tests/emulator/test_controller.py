@@ -20,7 +20,7 @@ def make_test_controller(
     web_on: bool, devices: List[TT6CoverEmulator]
 ) -> TT6Controller:
     controller = TT6Controller(web_on)
-    controller._server = AsyncMock()
+    controller._server = AsyncMock(spec_set=asyncio.Server)
     controller._server.is_serving.return_value = True
     for device in devices:
         controller.device_manager.register_device(device)

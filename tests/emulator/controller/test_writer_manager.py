@@ -1,3 +1,4 @@
+from asyncio import StreamWriter
 from unittest import IsolatedAsyncioTestCase
 from unittest.mock import AsyncMock
 
@@ -6,8 +7,8 @@ from nicett6.emulator.controller.writer_manager import WriterManager
 
 class TestWriterManager(IsolatedAsyncioTestCase):
     async def test_add(self) -> None:
-        writer1 = AsyncMock()
-        writer2 = AsyncMock()
+        writer1 = AsyncMock(spec_set=StreamWriter)
+        writer2 = AsyncMock(spec_set=StreamWriter)
         wm = WriterManager()
         self.assertEqual(len(wm.writers), 0)
         wm = WriterManager()
@@ -19,8 +20,8 @@ class TestWriterManager(IsolatedAsyncioTestCase):
         self.assertEqual(len(wm.writers), 0)
 
     async def test_write_all(self) -> None:
-        writer1 = AsyncMock()
-        writer2 = AsyncMock()
+        writer1 = AsyncMock(spec_set=StreamWriter)
+        writer2 = AsyncMock(spec_set=StreamWriter)
         wm = WriterManager()
         with wm.wrap_writer(writer1):
             with wm.wrap_writer(writer2):

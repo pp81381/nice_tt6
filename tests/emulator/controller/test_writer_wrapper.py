@@ -1,3 +1,4 @@
+from asyncio import StreamWriter
 from unittest import IsolatedAsyncioTestCase
 from unittest.mock import AsyncMock, MagicMock
 
@@ -9,7 +10,7 @@ class TestWriterWrapper(IsolatedAsyncioTestCase):
     EXPECTED: bytes = b"TEST\r\n"
 
     async def test_write_msg(self) -> None:
-        writer = AsyncMock()
+        writer = AsyncMock(spec_set=StreamWriter)
         ww = WriterWrapper(writer)
         await ww.write_msg(self.MSG)
         writer.write.assert_called_once_with(self.EXPECTED)
@@ -18,7 +19,7 @@ class TestWriterWrapper(IsolatedAsyncioTestCase):
 
     async def test_connection_lost(self) -> None:
         msg: str = "TEST"
-        writer = AsyncMock()
+        writer = AsyncMock(spec_set=StreamWriter)
         writer.write = MagicMock(side_effect=ConnectionResetError("Connection Reset"))
         ww = WriterWrapper(writer)
         await ww.write_msg(self.MSG)
