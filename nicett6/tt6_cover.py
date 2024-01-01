@@ -24,34 +24,38 @@ class TT6Cover:
     cover: Cover
     writer: TT6Writer
 
-    async def stop_notifier(self):
+    async def stop_notifier(self) -> None:
         await self.cover.stop_notifier()
 
-    async def send_pos_request(self):
+    async def send_pos_request(self) -> None:
         await self.writer.send_web_pos_request(self.tt_addr)
 
-    async def send_drop_pct_command(self, drop_pct):
+    async def send_simple_command(self, cmd_name: str) -> None:
+        _LOGGER.debug(f"sending {cmd_name} to {self.cover.name}")
+        await self.writer.send_simple_command(self.tt_addr, cmd_name)
+
+    async def send_drop_pct_command(self, drop_pct: float) -> None:
         _LOGGER.debug(f"moving {self.cover.name} to {drop_pct}")
         await self.writer.send_web_move_command(self.tt_addr, drop_pct)
 
-    async def send_hex_move_command(self, hex_pos: int):
+    async def send_hex_move_command(self, hex_pos: int) -> None:
         _LOGGER.debug(f"moving {self.cover.name} to hex pos {hex_pos}")
         await self.writer.send_hex_move_command(self.tt_addr, hex_pos)
 
-    async def send_close_command(self):
+    async def send_close_command(self) -> None:
         _LOGGER.debug(f"sending MOVE_UP to {self.cover.name}")
         await self.writer.send_simple_command(self.tt_addr, "MOVE_UP")
 
-    async def send_open_command(self):
+    async def send_open_command(self) -> None:
         _LOGGER.debug(f"sending MOVE_DOWN to {self.cover.name}")
         await self.writer.send_simple_command(self.tt_addr, "MOVE_DOWN")
 
-    async def send_preset_command(self, preset_num: int):
+    async def send_preset_command(self, preset_num: int) -> None:
         preset_command = f"MOVE_POS_{preset_num:d}"
         _LOGGER.debug(f"sending {preset_command} to {self.cover.name}")
         await self.writer.send_simple_command(self.tt_addr, preset_command)
 
-    async def send_stop_command(self):
+    async def send_stop_command(self) -> None:
         _LOGGER.debug(f"sending STOP to {self.cover.name}")
         await self.writer.send_simple_command(self.tt_addr, "STOP")
 

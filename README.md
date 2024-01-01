@@ -152,7 +152,9 @@ Method|Description
 `TT6Writer.send_web_pos_request(tt_addr)`|Send a request to the controller to send the position of the TTBus device at `tt_addr`<br>Web commands must be enabled for this command to work
 `TT6Writer.process_request(coro, [time_window])`|Send a command and collect the response messages that arrive in time_window
 
-<br>Command codes for `send_simple_command`:
+#### Command Codes
+
+Command codes for `send_simple_command`:
 
 Code|Meaning
 --|--
@@ -315,6 +317,7 @@ Method|Description
 `TT6Cover.send_pos_request()`|Send a POS request to the controller
 `TT6Cover.send_drop_pct_command(drop_pct)`|Send a POS command to the controller to set the drop percentage of the Cover to `drop_pct`<br>`drop_pct` should be between 0.0 (fully open/down) and 1.0 (fully closed/up)<br>Out of range values for `drop_pct` will be rounded up/down accordingly
 `TT6Cover.send_hex_move_command()`|Send a POS command to the controller to set the drop percentage of the Cover to `hex_pos`<br>`hex_pos` is a value between 0x00 (fully open/down) and 0xFF (fully closed/up)
+`TT6Cover.send_simple_command(cmd_name)`|Send a [simple command](#command-codes) to the controller for the Cover
 `TT6Cover.send_close_command()`|Send a close command to the controller for the Cover
 `TT6Cover.send_open_command()`|Send an open command to the controller for the Cover
 `TT6Cover.send_preset_command(preset_num)`|Send an preset command to the controller for the Cover
