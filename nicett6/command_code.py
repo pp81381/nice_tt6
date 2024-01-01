@@ -1,4 +1,5 @@
 from enum import Enum
+from typing import List
 
 
 class CommandCode(Enum):
@@ -27,3 +28,7 @@ class CommandCode(Enum):
     DEL_POS_6 = 0x37
     MOVE_POS = 0x40
     READ_POS = 0x45
+
+
+def command_code_names() -> List[str]:
+    return [code.name for code in CommandCode]
