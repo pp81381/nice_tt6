@@ -11,7 +11,6 @@ from nicett6.decode import (
     PctPosResponse,
     ResponseMessageType,
 )
-from nicett6.multiplexer import MultiplexerSerialConnection
 from nicett6.tt6_cover import TT6Cover
 from nicett6.ttbus_device import TTBusDeviceAddress
 
@@ -20,7 +19,7 @@ _LOGGER = logging.getLogger(__name__)
 
 class CoverManager:
     def __init__(self, serial_port: str):
-        self._conn: Optional[MultiplexerSerialConnection] = None
+        self._conn: Optional[TT6Connection] = None
         self._serial_port: str = serial_port
         self._message_tracker_reader: Optional[TT6Reader] = None
         self._writer: Optional[TT6Writer] = None
