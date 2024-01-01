@@ -152,31 +152,11 @@ class TestCIWManager(IsolatedAsyncioTestCase):
         await task
 
     async def test7(self):
-        await self.ciw.send_close_command()
+        await self.ciw.send_simple_command("MOVE_UP")
         writer = self.conn.get_writer.return_value
         writer.send_simple_command.assert_has_awaits(
             [
                 call(self.screen_tt_addr, "MOVE_UP"),
                 call(self.mask_tt_addr, "MOVE_UP"),
-            ]
-        )
-
-    async def test8(self):
-        await self.ciw.send_open_command()
-        writer = self.conn.get_writer.return_value
-        writer.send_simple_command.assert_has_awaits(
-            [
-                call(self.screen_tt_addr, "MOVE_DOWN"),
-                call(self.mask_tt_addr, "MOVE_DOWN"),
-            ]
-        )
-
-    async def test9(self):
-        await self.ciw.send_stop_command()
-        writer = self.conn.get_writer.return_value
-        writer.send_simple_command.assert_has_awaits(
-            [
-                call(self.screen_tt_addr, "STOP"),
-                call(self.mask_tt_addr, "STOP"),
             ]
         )

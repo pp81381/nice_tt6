@@ -81,7 +81,7 @@ class TestCoverManagerContextManager(IsolatedAsyncioTestCase):
             writer = self.conn.get_writer.return_value
             writer.send_web_on.assert_awaited_once()
             writer.send_web_pos_request.assert_awaited_with(self.tt_addr)
-            await tt6_cover.send_open_command()
+            await tt6_cover.send_simple_command("MOVE_DOWN")
             writer = self.conn.get_writer.return_value
             writer.send_simple_command.assert_awaited_with(self.tt_addr, "MOVE_DOWN")
             self.conn.close.assert_not_called()

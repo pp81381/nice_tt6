@@ -21,13 +21,13 @@ async def request_screen_position(writer, tt_addr):
 
 
 async def example_ciw1(ciw: CIWManager):
-    _LOGGER.info("closing screen")
-    await ciw.send_close_command()
+    _LOGGER.info("sending MOVE_DOWN")
+    await ciw.send_simple_command("MOVE_DOWN")
     await ciw.wait_for_motion_to_complete()
-    _LOGGER.info("screen closed, opening screen")
-    await ciw.send_open_command()
+    _LOGGER.info("sending MOVE_UP")
+    await ciw.send_simple_command("MOVE_UP")
     await ciw.wait_for_motion_to_complete()
-    _LOGGER.info("screen opened")
+    _LOGGER.info("motion complete")
 
 
 async def main(serial_port, example):

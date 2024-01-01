@@ -34,7 +34,7 @@ async def example1(serial_port):
         await tt6_cover.send_drop_pct_command(0.9)
         await wait_for_motion_to_complete([tt6_cover.cover])
 
-        await tt6_cover.send_close_command()
+        await tt6_cover.send_simple_command("MOVE_UP")
         await wait_for_motion_to_complete([tt6_cover.cover])
 
         logger_task.cancel()

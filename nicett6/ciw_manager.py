@@ -12,28 +12,20 @@ class CIWManager:
     mask_tt6_cover: TT6Cover
     image_def: ImageDef
 
-    def get_helper(self):
+    def get_helper(self) -> CIWHelper:
         return CIWHelper(
             self.screen_tt6_cover.cover,
             self.mask_tt6_cover.cover,
             self.image_def,
         )
 
-    async def send_pos_request(self):
+    async def send_pos_request(self) -> None:
         await self.screen_tt6_cover.send_pos_request()
         await self.mask_tt6_cover.send_pos_request()
 
-    async def send_close_command(self):
-        await self.screen_tt6_cover.send_close_command()
-        await self.mask_tt6_cover.send_close_command()
-
-    async def send_open_command(self):
-        await self.screen_tt6_cover.send_open_command()
-        await self.mask_tt6_cover.send_open_command()
-
-    async def send_stop_command(self):
-        await self.screen_tt6_cover.send_stop_command()
-        await self.mask_tt6_cover.send_stop_command()
+    async def send_simple_command(self, cmd_name: str) -> None:
+        await self.screen_tt6_cover.send_simple_command(cmd_name)
+        await self.mask_tt6_cover.send_simple_command(cmd_name)
 
     async def wait_for_motion_to_complete(self):
         return await wait_for_motion_to_complete(

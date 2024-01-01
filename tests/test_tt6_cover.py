@@ -65,13 +65,5 @@ class TestHandleSendingMessage(IsolatedAsyncioTestCase):
         self.writer.send_web_move_command.assert_awaited_with(self.tt_addr, 0.5)
 
     async def test2(self):
-        await self.tt6_cover.send_close_command()
+        await self.tt6_cover.send_simple_command("MOVE_UP")
         self.writer.send_simple_command.assert_awaited_with(self.tt_addr, "MOVE_UP")
-
-    async def test3(self):
-        await self.tt6_cover.send_open_command()
-        self.writer.send_simple_command.assert_awaited_with(self.tt_addr, "MOVE_DOWN")
-
-    async def test4(self):
-        await self.tt6_cover.send_stop_command()
-        self.writer.send_simple_command.assert_awaited_with(self.tt_addr, "STOP")

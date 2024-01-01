@@ -222,7 +222,7 @@ async def example(serial_port):
         await tt6_cover.send_drop_pct_command(0.9)
         await wait_for_motion_to_complete([tt6_cover.cover])
 
-        await tt6_cover.send_close_command()
+        await tt6_cover.send_simple_command("MOVE_UP")
         await wait_for_motion_to_complete([tt6_cover.cover])
 
         logger_task.cancel()
@@ -318,10 +318,6 @@ Method|Description
 `TT6Cover.send_drop_pct_command(drop_pct)`|Send a POS command to the controller to set the drop percentage of the Cover to `drop_pct`<br>`drop_pct` should be between 0.0 (fully open/down) and 1.0 (fully closed/up)<br>Out of range values for `drop_pct` will be rounded up/down accordingly
 `TT6Cover.send_hex_move_command()`|Send a POS command to the controller to set the drop percentage of the Cover to `hex_pos`<br>`hex_pos` is a value between 0x00 (fully open/down) and 0xFF (fully closed/up)
 `TT6Cover.send_simple_command(cmd_name)`|Send a [simple command](#command-codes) to the controller for the Cover
-`TT6Cover.send_close_command()`|Send a close command to the controller for the Cover
-`TT6Cover.send_open_command()`|Send an open command to the controller for the Cover
-`TT6Cover.send_preset_command(preset_num)`|Send an preset command to the controller for the Cover
-`TT6Cover.send_stop_command()`|Send a stop command to the controller for the Cover
 
 ## PostMovementNotifier
 
@@ -363,9 +359,9 @@ async def main(serial_port=None):
             ImageDef(0.05, 1.57, 16 / 9),
         )
         reader_task = asyncio.create_task(mgr.message_tracker())
-        await ciw.send_close_command()
+        await ciw.send_simple_command("MOVE_DOWN")
         await ciw.wait_for_motion_to_complete()
-        await ciw.send_open_command()
+        await ciw.send_simple_command("MOVE_UP")
         await ciw.wait_for_motion_to_complete()
     await reader_task
 ```
@@ -392,9 +388,7 @@ Method|Description
 --|--
 `CIWManager.get_helper()`|Return a `CIWHelper` sensor object referencing the `Cover` sensor objects referenced by the screen and mask `TT6Cover` objects
 `CIWManager.send_pos_request()`|Send a POS request to the screen and mask
-`CIWManager.send_close_command()`|Send a close command to the screen and mask
-`CIWManager.send_open_command()`|Send an open command to the screen and mask
-`CIWManager.send_stop_command()`|Send a stop command to the screen and mask
+`CIWManager.send_simple_command(cmd_name)`|Send a [simple command](#command-codes) to the screen and mask
 `CIWManager.wait_for_motion_to_complete()`|Waits for motion to complete for both screen and mask<br>Has side effect of notifying observers of the cover when it goes idle
 
 
