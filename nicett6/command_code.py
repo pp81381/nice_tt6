@@ -1,5 +1,5 @@
 from enum import Enum
-from typing import List
+from typing import Set
 
 
 class CommandCode(Enum):
@@ -30,5 +30,37 @@ class CommandCode(Enum):
     READ_POS = 0x45
 
 
-def command_code_names() -> List[str]:
-    return [code.name for code in CommandCode]
+SIMPLE_COMMANDS: Set[CommandCode] = {
+    CommandCode.STOP,
+    CommandCode.MOVE_DOWN,
+    CommandCode.MOVE_UP,
+    CommandCode.MOVE_POS_1,
+    CommandCode.MOVE_POS_2,
+    CommandCode.MOVE_POS_3,
+    CommandCode.MOVE_POS_4,
+    CommandCode.MOVE_POS_5,
+    CommandCode.MOVE_POS_6,
+    CommandCode.MOVE_UP_STEP,
+    CommandCode.MOVE_DOWN_STEP,
+    CommandCode.STORE_POS_1,
+    CommandCode.STORE_POS_2,
+    CommandCode.STORE_POS_3,
+    CommandCode.STORE_POS_4,
+    CommandCode.STORE_POS_5,
+    CommandCode.STORE_POS_6,
+    CommandCode.DEL_POS_1,
+    CommandCode.DEL_POS_2,
+    CommandCode.DEL_POS_3,
+    CommandCode.DEL_POS_4,
+    CommandCode.DEL_POS_5,
+    CommandCode.DEL_POS_6,
+    CommandCode.READ_POS,
+}
+
+
+def command_code_names() -> Set[str]:
+    return {code.name for code in CommandCode}
+
+
+def simple_command_code_names() -> Set[str]:
+    return {code.name for code in SIMPLE_COMMANDS}
