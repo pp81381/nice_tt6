@@ -111,7 +111,7 @@ Property|Description
 --|--
 `tt_addr`|the `TTBusDeviceAddress` of the TTBus device
 `cmd_code`|the command being acknowledged
-`hex_pos`|the position as a value between 0x00 (fully down/open) and 0xFF (fully up/closed)
+`hex_pos`|the position as a value between 0x00 (fully down) and 0xFF (fully up)
 
 ### PctPosResponse
 
@@ -120,7 +120,7 @@ Sent by the controller in response to a "web position request"
 Property|Description
 --|--
 `tt_addr`|the `TTBusDeviceAddress` of the TTBus device
-`pct_pos`|the position as a value between 0.0 (fully down/open) and 1.0 (fully up/closed)
+`pct_pos`|the position as a value between 0.0 (fully down) and 1.0 (fully up)
 
 ### InformationalResponse
 
@@ -147,8 +147,8 @@ Method|Description
 `TT6Writer.send_web_on()`|Send the WEB_ON command to the controller to enable web commands and to instruct the controller to send the motor positions as they move
 `TT6Writer.send_web_off()`|Send the WEB_OFF command to the controller to disable web commands and to instruct the controller not to send the motor positions as they move
 `TT6Writer.send_simple_command(tt_addr, cmd_name)`|Send `cmd_name` to the TTBus device at `tt_addr`<br>See the table below for a list of all valid `cmd_name` values
-`TT6Writer.send_hex_move_command(tt_addr, hex_pos)`|Instruct the controller to move the TTBus device at `tt_addr` to `hex_pos`<br>`hex_pos` is a value between 0x00 (fully down/open) and 0xFF (fully up/closed)
-`TT6Writer.send_web_move_command(tt_addr, pct_pos)`|Instruct the controller to move the TTBus device at `tt_addr` to `pct_pos`<br>`pct_pos` is a value between 0.0 (fully down/open) and 1.0 (fully up/closed)<br>Out of range values for `pct_pos` will be rounded up or down accordingly<br>Web commands must be enabled for this command to work
+`TT6Writer.send_hex_move_command(tt_addr, hex_pos)`|Instruct the controller to move the TTBus device at `tt_addr` to `hex_pos`<br>`hex_pos` is a value between 0x00 (fully down) and 0xFF (fully up)
+`TT6Writer.send_web_move_command(tt_addr, pct_pos)`|Instruct the controller to move the TTBus device at `tt_addr` to `pct_pos`<br>`pct_pos` is a value between 0.0 (fully down) and 1.0 (fully up)<br>Out of range values for `pct_pos` will be rounded up or down accordingly<br>Web commands must be enabled for this command to work
 `TT6Writer.send_web_pos_request(tt_addr)`|Send a request to the controller to send the position of the TTBus device at `tt_addr`<br>Web commands must be enabled for this command to work
 `TT6Writer.process_request(coro, [time_window])`|Send a command and collect the response messages that arrive in time_window
 
@@ -158,7 +158,7 @@ Command codes for `send_simple_command`:
 
 Code|Meaning
 --|--
-`READ_POS`|Request the current position<br>Controller will send a value between 0x00 (fully down/open) and 0xFF (fully up/closed) 
+`READ_POS`|Request the current position<br>Controller will send a value between 0x00 (fully down) and 0xFF (fully up) 
 `STOP`|Stop
 `MOVE_DOWN`|Move down
 `MOVE_UP`|Move up
@@ -203,8 +203,8 @@ async def log_cover_state(cover):
         while cover.is_moving:
             _LOGGER.info(
                 f"drop: {cover.drop}; "
-                f"is_opening: {cover.is_opening}; "
-                f"is_closing: {cover.is_closing}; "
+                f"is_going_up: {cover.is_going_up}; "
+                f"is_going_down: {cover.is_going_down}; "
             )
             await asyncio.sleep(1.0)
     except asyncio.CancelledError:
@@ -281,17 +281,18 @@ Has the following properties and methods:
 
 Property|Description
 --|--
-`Cover.drop_pct`|the percentage drop (0.0 = fully open/down, 1.0 = fully closed/up)
+`Cover.drop_pct`|the percentage drop (0.0 = fully down, 1.0 = fully up)
 `Cover.drop`|drop in metres
 `Cover.is_moving`|returns True if the cover has moved recently
-`Cover.is_closed`|returns True if the cover is fully up (opposite of a blind)
-`Cover.is_closing`|returns True if the cover is going up (opposite of a blind)<br>will only be meaningful after `drop_pct` has been set by the first POS message coming back from the cover for a movement
-`Cover.is_opening`|returns True if the cover is going down (opposite of a blind)<br>will only be meaningful after `drop_pct` has been set by the first POS message coming back from the cover for a movement
+`Cover.is_fully_up`|returns True if the cover is fully up
+`Cover.is_fully_down`|returns True if the cover is fully down
+`Cover.is_going_up`|returns True if the cover is going up<br>will only be meaningful after `drop_pct` has been set by the first POS message coming back from the cover for a movement
+`Cover.is_going_down`|returns True if the cover is going down<br>will only be meaningful after `drop_pct` has been set by the first POS message coming back from the cover for a movement
 
 
 Method|Description
 --|--
-`Cover.set_drop_pct`|Set the percentage drop (0.0 = fully open/down, 1.0 = fully closed/up) - async<br>Will notify observers of the state change
+`Cover.set_drop_pct`|Set the percentage drop (0.0 = fully down, 1.0 = fully up) - async<br>Will notify observers of the state change
 `Cover.moved()`|Called to indicate movement<br>When initiating movement, call `moved()` so that `is_moving` will be meaningful in the interval before the first POS message comes back from the cover<br>Will notify observers of the state change
 `Cover.set_idle()`|Called to indicate that the cover is idle<br>After detecting that the cover is idle, call `set_idle()` so that the next movement direction will be correctly inferred<br>Will notify observers of the state change
 
@@ -315,8 +316,8 @@ Property|Description
 Method|Description
 --|--
 `TT6Cover.send_pos_request()`|Send a POS request to the controller
-`TT6Cover.send_drop_pct_command(drop_pct)`|Send a POS command to the controller to set the drop percentage of the Cover to `drop_pct`<br>`drop_pct` should be between 0.0 (fully open/down) and 1.0 (fully closed/up)<br>Out of range values for `drop_pct` will be rounded up/down accordingly
-`TT6Cover.send_hex_move_command()`|Send a POS command to the controller to set the drop percentage of the Cover to `hex_pos`<br>`hex_pos` is a value between 0x00 (fully open/down) and 0xFF (fully closed/up)
+`TT6Cover.send_drop_pct_command(drop_pct)`|Send a POS command to the controller to set the drop percentage of the Cover to `drop_pct`<br>`drop_pct` should be between 0.0 (fully down) and 1.0 (fully up)<br>Out of range values for `drop_pct` will be rounded up/down accordingly
+`TT6Cover.send_hex_move_command()`|Send a POS command to the controller to set the drop percentage of the Cover to `hex_pos`<br>`hex_pos` is a value between 0x00 (fully down) and 0xFF (fully up)
 `TT6Cover.send_simple_command(cmd_name)`|Send a [simple command](#command-codes) to the controller for the Cover
 
 ## PostMovementNotifier

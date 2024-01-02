@@ -38,33 +38,33 @@ class TestCover(IsolatedAsyncioTestCase):
 
     async def test6(self):
         self.assertEqual(self.cover.is_moving, False)
-        self.assertEqual(self.cover.is_closed, True)
+        self.assertEqual(self.cover.is_fully_up, True)
 
     async def test7(self):
         await self.cover.set_drop_pct(0.5)
-        self.assertEqual(self.cover.is_closed, False)
+        self.assertEqual(self.cover.is_fully_up, False)
         self.assertEqual(self.cover.is_moving, True)
-        self.assertEqual(self.cover.is_opening, True)
-        self.assertEqual(self.cover.is_closing, False)
+        self.assertEqual(self.cover.is_going_down, True)
+        self.assertEqual(self.cover.is_going_up, False)
         await self.mock_sleep(Cover.MOVEMENT_THRESHOLD_INTERVAL + 0.1)
-        self.assertEqual(self.cover.is_closed, False)
+        self.assertEqual(self.cover.is_fully_up, False)
         self.assertEqual(self.cover.is_moving, False)
-        self.assertEqual(self.cover.is_opening, False)
-        self.assertEqual(self.cover.is_closing, False)
+        self.assertEqual(self.cover.is_going_down, False)
+        self.assertEqual(self.cover.is_going_up, False)
         await self.cover.set_drop_pct(0.5)
         # Not really a movement but we don't know whether
         # it's the first of a sequence of pos messages
         self.assertEqual(self.cover.is_moving, True)
         await self.cover.set_drop_pct(1.0)
-        self.assertEqual(self.cover.is_closed, False)
+        self.assertEqual(self.cover.is_fully_up, False)
         self.assertEqual(self.cover.is_moving, True)
-        self.assertEqual(self.cover.is_opening, False)
-        self.assertEqual(self.cover.is_closing, True)
+        self.assertEqual(self.cover.is_going_down, False)
+        self.assertEqual(self.cover.is_going_up, True)
         await self.mock_sleep(Cover.MOVEMENT_THRESHOLD_INTERVAL + 0.1)
-        self.assertEqual(self.cover.is_closed, True)
+        self.assertEqual(self.cover.is_fully_up, True)
         self.assertEqual(self.cover.is_moving, False)
-        self.assertEqual(self.cover.is_opening, False)
-        self.assertEqual(self.cover.is_closing, False)
+        self.assertEqual(self.cover.is_going_down, False)
+        self.assertEqual(self.cover.is_going_up, False)
 
     async def test8(self):
         """Emulate a sequence of movement messages coming in"""
@@ -106,96 +106,114 @@ class TestCover(IsolatedAsyncioTestCase):
             drop_pct_to_set,
             sleep_before_check,
             drop_pct,
-            is_closed,
+            is_fully_up,
             is_moving,
-            is_opening,
-            is_closing,
+            is_going_down,
+            is_going_up,
         ) in tests:
             with self.subTest(name):
                 if drop_pct_to_set is not None:
                     await self.cover.set_drop_pct(drop_pct_to_set)
                 await self.mock_sleep(sleep_before_check)
                 self.assertAlmostEqual(self.cover.drop_pct, drop_pct)
-                self.assertEqual(self.cover.is_closed, is_closed)
+                self.assertEqual(self.cover.is_fully_up, is_fully_up)
                 self.assertEqual(self.cover.is_moving, is_moving)
-                self.assertEqual(self.cover.is_opening, is_opening)
-                self.assertEqual(self.cover.is_closing, is_closing)
+                self.assertEqual(self.cover.is_going_down, is_going_down)
+                self.assertEqual(self.cover.is_going_up, is_going_up)
 
     async def test10(self):
-        self.assertTrue(self.cover.is_closed)
+        self.assertTrue(self.cover.is_fully_up)
         self.assertFalse(self.cover.is_moving)
-        self.assertFalse(self.cover.is_opening)
-        self.assertFalse(self.cover.is_closing)
+        self.assertFalse(self.cover.is_going_down)
+        self.assertFalse(self.cover.is_going_up)
         await self.cover.set_drop_pct(0.8)
         self.assertAlmostEqual(self.cover._prev_drop_pct, 1.0)
-        self.assertFalse(self.cover.is_closed)
+        self.assertFalse(self.cover.is_fully_up)
         self.assertTrue(self.cover.is_moving)
-        self.assertTrue(self.cover.is_opening)
-        self.assertFalse(self.cover.is_closing)
+        self.assertTrue(self.cover.is_going_down)
+        self.assertFalse(self.cover.is_going_up)
         await self.mock_sleep(Cover.MOVEMENT_THRESHOLD_INTERVAL + 0.01)
         self.assertAlmostEqual(self.cover._prev_drop_pct, 1.0)  #!!
-        self.assertFalse(self.cover.is_closed)
+        self.assertFalse(self.cover.is_fully_up)
         self.assertFalse(self.cover.is_moving)
-        self.assertFalse(self.cover.is_opening)
-        self.assertFalse(self.cover.is_closing)
+        self.assertFalse(self.cover.is_going_down)
+        self.assertFalse(self.cover.is_going_up)
         await self.cover.set_idle()
         self.assertAlmostEqual(self.cover._prev_drop_pct, 0.8)  # !!
-        self.assertFalse(self.cover.is_closed)
+        self.assertFalse(self.cover.is_fully_up)
         self.assertFalse(self.cover.is_moving)
-        self.assertFalse(self.cover.is_opening)
-        self.assertFalse(self.cover.is_closing)
+        self.assertFalse(self.cover.is_going_down)
+        self.assertFalse(self.cover.is_going_up)
         await self.cover.moved()  # We are moving but we don't know the direction yet
         self.assertAlmostEqual(self.cover._prev_drop_pct, 0.8)
-        self.assertFalse(self.cover.is_closed)
+        self.assertFalse(self.cover.is_fully_up)
         self.assertTrue(self.cover.is_moving)
-        self.assertFalse(self.cover.is_opening)
-        self.assertFalse(self.cover.is_closing)
+        self.assertFalse(self.cover.is_going_down)
+        self.assertFalse(self.cover.is_going_up)
 
     async def test11(self):
-        self.assertTrue(self.cover.is_closed)
+        self.assertTrue(self.cover.is_fully_up)
         self.assertFalse(self.cover.is_moving)
-        self.assertFalse(self.cover.is_opening)
-        self.assertFalse(self.cover.is_closing)
-        await self.cover.set_closing()
-        self.assertFalse(self.cover.is_closed)
+        self.assertFalse(self.cover.is_going_down)
+        self.assertFalse(self.cover.is_going_up)
+        await self.cover.set_going_up()
+        self.assertFalse(self.cover.is_fully_up)
         self.assertTrue(self.cover.is_moving)
-        self.assertFalse(self.cover.is_opening)
-        self.assertTrue(self.cover.is_closing)
+        self.assertFalse(self.cover.is_going_down)
+        self.assertTrue(self.cover.is_going_up)
 
     async def test12(self):
-        self.assertTrue(self.cover.is_closed)
+        self.assertTrue(self.cover.is_fully_up)
         self.assertFalse(self.cover.is_moving)
-        self.assertFalse(self.cover.is_opening)
-        self.assertFalse(self.cover.is_closing)
-        await self.cover.set_opening()
-        self.assertFalse(self.cover.is_closed)
+        self.assertFalse(self.cover.is_going_down)
+        self.assertFalse(self.cover.is_going_up)
+        await self.cover.set_going_down()
+        self.assertFalse(self.cover.is_fully_up)
         self.assertTrue(self.cover.is_moving)
-        self.assertTrue(self.cover.is_opening)
-        self.assertFalse(self.cover.is_closing)
+        self.assertTrue(self.cover.is_going_down)
+        self.assertFalse(self.cover.is_going_up)
 
     async def test13(self):
-        self.assertTrue(self.cover.is_closed)
+        self.assertTrue(self.cover.is_fully_up)
         self.assertFalse(self.cover.is_moving)
-        self.assertFalse(self.cover.is_opening)
-        self.assertFalse(self.cover.is_closing)
+        self.assertFalse(self.cover.is_going_down)
+        self.assertFalse(self.cover.is_going_up)
         await self.cover.set_target_drop_pct_hint(0.5)
-        self.assertFalse(self.cover.is_closed)
+        self.assertFalse(self.cover.is_fully_up)
         self.assertTrue(self.cover.is_moving)
-        self.assertTrue(self.cover.is_opening)
-        self.assertFalse(self.cover.is_closing)
+        self.assertTrue(self.cover.is_going_down)
+        self.assertFalse(self.cover.is_going_up)
 
     async def test14(self):
         await self.cover.set_drop_pct(0.0)
         await self.mock_sleep(Cover.MOVEMENT_THRESHOLD_INTERVAL + 0.01)
-        self.assertFalse(self.cover.is_closed)
+        self.assertFalse(self.cover.is_fully_up)
         self.assertFalse(self.cover.is_moving)
-        self.assertFalse(self.cover.is_opening)
-        self.assertFalse(self.cover.is_closing)
+        self.assertFalse(self.cover.is_going_down)
+        self.assertFalse(self.cover.is_going_up)
         await self.cover.set_target_drop_pct_hint(0.5)
-        self.assertFalse(self.cover.is_closed)
+        self.assertFalse(self.cover.is_fully_up)
         self.assertTrue(self.cover.is_moving)
-        self.assertFalse(self.cover.is_opening)
-        self.assertTrue(self.cover.is_closing)
+        self.assertFalse(self.cover.is_going_down)
+        self.assertTrue(self.cover.is_going_up)
+
+    async def test15(self):
+        await self.cover.set_drop_pct(0.0)
+        await self.cover.set_idle()
+        self.assertFalse(self.cover.is_fully_up)
+        self.assertTrue(self.cover.is_fully_down)
+
+    async def test16(self):
+        await self.cover.set_drop_pct(0.5)
+        await self.cover.set_idle()
+        self.assertFalse(self.cover.is_fully_up)
+        self.assertFalse(self.cover.is_fully_down)
+
+    async def test17(self):
+        await self.cover.set_drop_pct(1.0)
+        await self.cover.set_idle()
+        self.assertTrue(self.cover.is_fully_up)
+        self.assertFalse(self.cover.is_fully_down)
 
 
 class TestCoverNotifer(IsolatedAsyncioTestCase):
@@ -209,19 +227,19 @@ class TestCoverNotifer(IsolatedAsyncioTestCase):
         ), patch("nicett6.cover.notifier_asyncio_sleep", manual_sleeper.sleep):
             cover = Cover("Test", 0.8)
 
-            self.assertTrue(cover.is_closed)
+            self.assertTrue(cover.is_fully_up)
             self.assertFalse(cover.is_moving)
-            self.assertFalse(cover.is_opening)
-            self.assertFalse(cover.is_closing)
+            self.assertFalse(cover.is_going_down)
+            self.assertFalse(cover.is_going_up)
             self.assertIsNone(cover._notifier._task)
 
             # moved() should start task; we also know direction immediately
             await cover.set_drop_pct(0.8)
             self.assertAlmostEqual(cover._prev_drop_pct, 1.0)
-            self.assertFalse(cover.is_closed)
+            self.assertFalse(cover.is_fully_up)
             self.assertTrue(cover.is_moving)
-            self.assertTrue(cover.is_opening)
-            self.assertFalse(cover.is_closing)
+            self.assertTrue(cover.is_going_down)
+            self.assertFalse(cover.is_going_up)
             self.assertIsNotNone(cover._notifier._task)
             if cover._notifier._task is not None:
                 self.assertFalse(cover._notifier._task.done())
@@ -231,10 +249,10 @@ class TestCoverNotifer(IsolatedAsyncioTestCase):
             self.assertAlmostEqual(
                 cover._prev_drop_pct, 1.0
             )  # set_idle() not called yet
-            self.assertFalse(cover.is_closed)
+            self.assertFalse(cover.is_fully_up)
             self.assertFalse(cover.is_moving)
-            self.assertFalse(cover.is_opening)
-            self.assertFalse(cover.is_closing)
+            self.assertFalse(cover.is_going_down)
+            self.assertFalse(cover.is_going_up)
             self.assertIsNotNone(cover._notifier._task)
             if cover._notifier._task is not None:
                 self.assertFalse(cover._notifier._task.done())
@@ -244,10 +262,10 @@ class TestCoverNotifer(IsolatedAsyncioTestCase):
             await manual_sleeper.wake()
             await cover.idle_event.wait()
             self.assertAlmostEqual(cover._prev_drop_pct, 0.8)
-            self.assertFalse(cover.is_closed)
+            self.assertFalse(cover.is_fully_up)
             self.assertFalse(cover.is_moving)
-            self.assertFalse(cover.is_opening)
-            self.assertFalse(cover.is_closing)
+            self.assertFalse(cover.is_going_down)
+            self.assertFalse(cover.is_going_up)
             self.assertIsNotNone(cover._notifier._task)
             if cover._notifier._task is not None:
                 self.assertTrue(cover._notifier._task.done())
@@ -255,10 +273,10 @@ class TestCoverNotifer(IsolatedAsyncioTestCase):
             # Flag that we are moving - however, we don't know the direction yet (restarts background task)
             await cover.moved()
             self.assertAlmostEqual(cover._prev_drop_pct, 0.8)
-            self.assertFalse(cover.is_closed)
+            self.assertFalse(cover.is_fully_up)
             self.assertTrue(cover.is_moving)
-            self.assertFalse(cover.is_opening)
-            self.assertFalse(cover.is_closing)
+            self.assertFalse(cover.is_going_down)
+            self.assertFalse(cover.is_going_up)
 
             self.assertIsNotNone(cover._notifier._task)
             if cover._notifier._task is not None:

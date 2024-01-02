@@ -15,7 +15,8 @@ class Cover(AsyncObservable):
     """A sensor class that can be used to monitor the position of a cover"""
 
     MOVEMENT_THRESHOLD_INTERVAL = 2.7
-    IS_CLOSED_PCT = 0.95
+    IS_FULLY_UP_PCT = 0.95
+    IS_FULLY_DOWN_PCT = 0.05
 
     def __init__(self, name, max_drop):
         super().__init__()
@@ -44,9 +45,10 @@ class Cover(AsyncObservable):
             f"drop_pct: {self.drop_pct}; "
             f"_prev_drop_pct: {self._prev_drop_pct}; "
             f"is_moving: {self.is_moving}; "
-            f"is_opening: {self.is_opening}; "
-            f"is_closing: {self.is_closing}; "
-            f"is_closed: {self.is_closed}; ",
+            f"is_going_down: {self.is_going_down}; "
+            f"is_going_up: {self.is_going_up}; "
+            f"is_fully_down: {self.is_fully_down}; ",
+            f"is_fully_up: {self.is_fully_up}; ",
         )
 
     @property
@@ -93,14 +95,19 @@ class Cover(AsyncObservable):
         return perf_counter() - self._prev_movement < self.MOVEMENT_THRESHOLD_INTERVAL
 
     @property
-    def is_closed(self):
-        """Returns True if the cover is fully up (opposite of a blind)"""
-        return not self.is_moving and self.drop_pct > self.IS_CLOSED_PCT
+    def is_fully_up(self):
+        """Returns True if the cover is fully up"""
+        return not self.is_moving and self.drop_pct > self.IS_FULLY_UP_PCT
 
     @property
-    def is_closing(self):
+    def is_fully_down(self):
+        """Returns True if the cover is fully down"""
+        return not self.is_moving and self.drop_pct < self.IS_FULLY_DOWN_PCT
+
+    @property
+    def is_going_up(self):
         """
-        Returns True if the cover is going up (opposite of a blind)
+        Returns True if the cover is going up
 
         Will only be meaningful after drop_pct has been set by the first
         POS message coming back from the cover for a movement
@@ -108,31 +115,31 @@ class Cover(AsyncObservable):
         return self.is_moving and self._drop_pct > self._prev_drop_pct
 
     @property
-    def is_opening(self):
+    def is_going_down(self):
         """
-        Returns True if the cover is going down (opposite of a blind)
+        Returns True if the cover is going down
 
         Will only be meaningful after drop_pct has been set by the first
         POS message coming back from the cover for a movement
         """
         return self.is_moving and self._drop_pct < self._prev_drop_pct
 
-    async def set_closing(self):
-        """Force the state to is_closing"""
+    async def set_going_up(self):
+        """Force the state to is_going_up"""
         self._prev_drop_pct = self._drop_pct - 0.0001
         await self.moved()
 
-    async def set_opening(self):
-        """Force the state to is_opening"""
+    async def set_going_down(self):
+        """Force the state to is_going_down"""
         self._prev_drop_pct = self._drop_pct + 0.0001
         await self.moved()
 
     async def set_target_drop_pct_hint(self, target_drop_pct):
-        """ "Force the state to is_opening/closing based on target drop_pct"""
+        """ "Force the state to is_going_up/down based on target drop_pct"""
         if target_drop_pct < self._drop_pct:
-            await self.set_opening()
+            await self.set_going_down()
         elif target_drop_pct > self._drop_pct:
-            await self.set_closing()
+            await self.set_going_up()
 
     async def stop_notifier(self):
         await self._notifier.cancel_task()

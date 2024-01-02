@@ -26,13 +26,13 @@ class TestHandleResponsesMessage(IsolatedAsyncioTestCase):
         await self.tt6_cover.handle_response_message(
             AckResponse(self.tt_addr, CommandCode.MOVE_UP)
         )
-        self.cover.set_closing.assert_awaited_once_with()
+        self.cover.set_going_up.assert_awaited_once_with()
 
     async def test4(self):
         await self.tt6_cover.handle_response_message(
             AckResponse(self.tt_addr, CommandCode.MOVE_DOWN)
         )
-        self.cover.set_opening.assert_awaited_once_with()
+        self.cover.set_going_down.assert_awaited_once_with()
 
     async def test5(self):
         await self.tt6_cover.handle_response_message(

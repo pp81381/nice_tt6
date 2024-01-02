@@ -14,8 +14,8 @@ async def log_cover_state(cover):
         while cover.is_moving:
             _LOGGER.info(
                 f"drop: {cover.drop}; "
-                f"is_opening: {cover.is_opening}; "
-                f"is_closing: {cover.is_closing}; "
+                f"set_going_up: {cover.set_going_up}; "
+                f"is_going_down: {cover.is_going_down}; "
             )
             await asyncio.sleep(1.0)
     except asyncio.CancelledError:

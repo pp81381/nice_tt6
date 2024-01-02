@@ -56,12 +56,12 @@ class TT6Cover:
                 msg.cmd_code == CommandCode.MOVE_UP
                 or msg.cmd_code == CommandCode.MOVE_UP_STEP
             ):
-                await self.cover.set_closing()
+                await self.cover.set_going_up()
             elif (
                 msg.cmd_code == CommandCode.MOVE_DOWN
                 or msg.cmd_code == CommandCode.MOVE_DOWN_STEP
             ):
-                await self.cover.set_opening()
+                await self.cover.set_going_down()
             elif msg.cmd_code == CommandCode.STOP:
                 # Can't call set_idle() here as a final pos
                 # response will come from the controller up to
