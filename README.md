@@ -332,88 +332,14 @@ Whenever the `Cover` moves, there is a call to `Cover.moved()` which calls `Post
 The task must sleep for `Cover.MOVEMENT_THRESHOLD_INTERVAL + PostMovementNotifier.POST_MOVEMENT_ALLOWANCE` seconds without being cancelled for the `Cover` to be considered idle.
 
 
-# High level CIW API
+# Projector Screen Helpers
 
-A high level API to manage a Constant Image Width retractable projector screen with a mask
+Helper classes to manage a projector screen composed of multiple covers such as a screen with a mask
 
 Component|Description
 --|--
-`CIWManager`|A class that manages a screen and mask simultaneously
-`CIWHelper`|A sensor class that tracks the positions of a screen and mask<br>Has properties to represent the visible image area
 `ImageDef`|A class that describes where the image area is located on a cover that is a screen
-
-<br>Example (also see [example1.py](#Examples) below):
-
-```python
-async def main(serial_port=None):
-    async with CoverManager(serial_port) as mgr:
-        screen_tt6_cover = await mgr.add_cover(
-            TTBusDeviceAddress(0x02, 0x04), Cover("Screen", 1.77)
-        )
-        mask_tt6_cover = await mgr.add_cover(
-            TTBusDeviceAddress(0x03, 0x04), Cover("Mask", 0.6)
-        )
-        ciw = CIWManager(
-            screen_tt6_cover,
-            mask_tt6_cover,
-            ImageDef(0.05, 1.57, 16 / 9),
-        )
-        reader_task = asyncio.create_task(mgr.message_tracker())
-        await ciw.send_simple_command("MOVE_DOWN")
-        await ciw.wait_for_motion_to_complete()
-        await ciw.send_simple_command("MOVE_UP")
-        await ciw.wait_for_motion_to_complete()
-    await reader_task
-```
-
-## CIWManager
-
-A class that manages a screen and mask simultaneously
-
-Constructor parameters:
-
-Parameter|Description
---|--
-`screen_tt6_cover`|The `TT6Cover` through which the screen cover can be controlled
-`mask_tt6_cover`|The `TT6Cover` through which the mask cover can be controlled
-`image_def`|An `ImageDef` object describing where the image area on the screen cover is
-
-Property|Description
---|--
-`CIWManager.screen_tt6_cover`|The `TT6Cover` through which the screen cover can be controlled
-`CIWManager.mask_tt6_cover`|The `TT6Cover` through which the mask cover can be controlled
-`CIWManager.image_def`|An `ImageDef` object describing where the image area on the screen cover is
-
-Method|Description
---|--
-`CIWManager.get_helper()`|Return a `CIWHelper` sensor object referencing the `Cover` sensor objects referenced by the screen and mask `TT6Cover` objects
-`CIWManager.send_pos_request()`|Send a POS request to the screen and mask
-`CIWManager.send_simple_command(cmd_name)`|Send a [simple command](#command-codes) to the screen and mask
-`CIWManager.wait_for_motion_to_complete()`|Waits for motion to complete for both screen and mask<br>Has side effect of notifying observers of the cover when it goes idle
-
-
-## CIWHelper
-
-A sensor class that represents the positions of a screen and mask
-
-Constructor parameters:
-
-Parameter|Description
---|--
-`screen`|A `Cover` sensor object representing the screen
-`mask`|A `Cover` sensor object representing the mask
-`image_def`|An `ImageDef` object describing where the image area on the screen cover is
-
-Properties:
-
-Property|Description
---|--
-`CIWHelper.image_width`|the width of the visible image in metres
-`CIWHelper.image_height`|the height of the visible image in metres or `None` if the image is not visible
-`CIWHelper.image_diagonal`|the diagonal of the visible image in metres or `None` if the image is not visible
-`CIWHelper.image_area`|the area of the visible image in square metres or `None` if the image is not visible
-`CIWHelper.image_is_visible`|True if the image area is visible or `None` if the image is not visible
-`CIWHelper.aspect_ratio`|The aspect ratio of the visible image or `None` if the image is not visible
+`CIWHelper`|A sensor class that tracks the positions of a screen and mask<br>Has properties to represent the visible image area
 
 ## ImageDef
 
@@ -445,6 +371,29 @@ Method|Description
 --|--
 `ImageDef.implied_image_height(target_aspect_ratio)`|implied height for `target_aspect_ratio` if the width is held constant
 <br>
+
+## CIWHelper
+
+A sensor class that represents the positions of a screen and mask
+
+Constructor parameters:
+
+Parameter|Description
+--|--
+`screen`|A `Cover` sensor object representing the screen
+`mask`|A `Cover` sensor object representing the mask
+`image_def`|An `ImageDef` object describing where the image area on the screen cover is
+
+Properties:
+
+Property|Description
+--|--
+`CIWHelper.image_width`|the width of the visible image in metres
+`CIWHelper.image_height`|the height of the visible image in metres or `None` if the image is not visible
+`CIWHelper.image_diagonal`|the diagonal of the visible image in metres or `None` if the image is not visible
+`CIWHelper.image_area`|the area of the visible image in square metres or `None` if the image is not visible
+`CIWHelper.image_is_visible`|True if the image area is visible or `None` if the image is not visible
+`CIWHelper.aspect_ratio`|The aspect ratio of the visible image or `None` if the image is not visible
 
 # Emulator
 
@@ -505,7 +454,6 @@ Sample config:
 
 The following examples can be used in conjunction with the [Emulator](#Emulator)
 
-* `example1.py` - shows how to use the [High Level CIW API](#High-Level-CIW-API)
 * `example2.py` - shows how to use the [Basic Control API](#Basic-Control-API)
 * `example3.py` - shows how to use the [High Level Cover API](#High-Level-Cover-API)
 
