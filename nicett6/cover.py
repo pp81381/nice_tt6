@@ -47,7 +47,7 @@ class Cover(AsyncObservable):
             f"is_moving: {self.is_moving}; "
             f"is_going_down: {self.is_going_down}; "
             f"is_going_up: {self.is_going_up}; "
-            f"is_fully_down: {self.is_fully_down}; ",
+            f"is_fully_down: {self.is_fully_down}; "
             f"is_fully_up: {self.is_fully_up}; ",
         )
 

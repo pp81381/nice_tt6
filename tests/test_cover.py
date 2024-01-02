@@ -1,3 +1,4 @@
+import logging
 from unittest import IsolatedAsyncioTestCase
 from unittest.mock import patch
 
@@ -214,6 +215,18 @@ class TestCover(IsolatedAsyncioTestCase):
         await self.cover.set_idle()
         self.assertTrue(self.cover.is_fully_up)
         self.assertFalse(self.cover.is_fully_down)
+
+    async def test18(self):
+        with self.assertLogs("nicett6.cover", level=logging.WARNING) as cm:
+            self.cover.log("Test Logging", logging.WARNING)
+        self.assertEqual(
+            cm.output,
+            [
+                "WARNING:nicett6.cover:Test Logging; name: Test; max_drop: 0.8; drop_pct: 1.0; "
+                "_prev_drop_pct: 1.0; is_moving: False; is_going_down: False; is_going_up: False; "
+                "is_fully_down: False; is_fully_up: True; "
+            ],
+        )
 
 
 class TestCoverNotifer(IsolatedAsyncioTestCase):
