@@ -59,7 +59,7 @@ class TestControllerDownMovement(IsolatedAsyncioTestCase):
 
     async def asyncSetUp(self):
         self.cover = TT6CoverEmulator(
-            "screen", TTBusDeviceAddress(0x02, 0x04), 0.01, 1.77, 0.08, 1.0
+            "screen", TTBusDeviceAddress(0x02, 0x04), 0.01, 1.77, 0.08, 1000
         )
         self.controller = make_test_controller(False, [self.cover])
 
@@ -74,13 +74,13 @@ class TestControllerDownMovement(IsolatedAsyncioTestCase):
         ]
         writer = AsyncMock(spec_set=StreamWriter)
         await self.controller.handle_messages(reader, writer)
-        self.assertAlmostEqual(self.cover.percent_pos, 0xEF / 0xFF, 2)
+        self.assertEqual(self.cover.pos, 937)
         writer.write.assert_called_once_with(EOL(b"RSP 2 4 40 EF"))
         writer.drain.assert_awaited_once()
         writer.close.assert_called_once()
 
     async def test_down_step(self):
-        expected_step_num = 1
+        expected_pos = 995
         expected_drop = self.cover.step_len
         reader = AsyncMock(spec_set=asyncio.StreamReader)
         reader.readuntil.side_effect = [
@@ -91,7 +91,7 @@ class TestControllerDownMovement(IsolatedAsyncioTestCase):
         await self.controller.handle_messages(reader, writer)
         writer.write.assert_called_once_with(EOL(b"RSP 2 4 13"))
         writer.drain.assert_awaited_once()
-        self.assertEqual(self.cover.step_num, expected_step_num)
+        self.assertEqual(self.cover.pos, expected_pos)
         self.assertAlmostEqual(self.cover.drop, expected_drop)
 
 
@@ -100,7 +100,7 @@ class TestControllerUpMovement(IsolatedAsyncioTestCase):
 
     async def asyncSetUp(self):
         self.cover = TT6CoverEmulator(
-            "screen", TTBusDeviceAddress(0x02, 0x04), 0.01, 1.77, 0.08, 0.95
+            "screen", TTBusDeviceAddress(0x02, 0x04), 0.01, 1.77, 0.08, 950
         )
         self.controller = make_test_controller(False, [self.cover])
 
@@ -117,7 +117,7 @@ class TestControllerUpMovement(IsolatedAsyncioTestCase):
         await self.controller.handle_messages(reader, writer)
         writer.write.assert_called_once_with(EOL(b"RSP 2 4 5"))
         writer.drain.assert_awaited_once()
-        self.assertAlmostEqual(self.cover.percent_pos, 1.0)
+        self.assertEqual(self.cover.pos, 1000)
 
     async def test_read_pos(self):
         reader = AsyncMock(spec_set=asyncio.StreamReader)
@@ -129,10 +129,10 @@ class TestControllerUpMovement(IsolatedAsyncioTestCase):
         await self.controller.handle_messages(reader, writer)
         writer.write.assert_called_once_with(EOL(b"RSP 2 4 45 F2"))
         writer.drain.assert_awaited_once()
-        self.assertAlmostEqual(self.cover.percent_pos, 0xF2 / 0xFF, 2)
+        self.assertEqual(self.cover.pos, 950)
 
     async def test_up_step(self):
-        expected_step_num = self.cover.step_num - 1
+        expected_pos = self.cover.pos + self.cover.pos_increment_per_step
         expected_drop = self.cover.drop - self.cover.step_len
         reader = AsyncMock(spec_set=asyncio.StreamReader)
         reader.readuntil.side_effect = [
@@ -143,14 +143,14 @@ class TestControllerUpMovement(IsolatedAsyncioTestCase):
         await self.controller.handle_messages(reader, writer)
         writer.write.assert_called_once_with(EOL(b"RSP 2 4 12"))
         writer.drain.assert_awaited_once()
-        self.assertEqual(self.cover.step_num, expected_step_num)
+        self.assertEqual(self.cover.pos, expected_pos)
         self.assertAlmostEqual(self.cover.drop, expected_drop)
 
 
 class TestMovementSequences(IsolatedAsyncioTestCase):
     async def asyncSetUp(self):
         self.cover = TT6CoverEmulator(
-            "test_cover", TTBusDeviceAddress(0x02, 0x04), 0.01, 1.77, 0.08, 1.0
+            "test_cover", TTBusDeviceAddress(0x02, 0x04), 0.01, 1.77, 0.08, 1000
         )
         self.controller = make_test_controller(False, [self.cover])
 
@@ -170,20 +170,20 @@ class TestMovementSequences(IsolatedAsyncioTestCase):
 
         reader2 = AsyncMock(spec_set=asyncio.StreamReader)
         reader2.readuntil.side_effect = [
-            EOL(f"POS > 02 04 0950 FFFF FF".encode("utf-8")),
+            EOL(f"POS > 02 04 0800 FFFF FF".encode("utf-8")),
             b"",
         ]
         writer2 = AsyncMock(spec_set=StreamWriter)
         await self.controller.handle_messages(reader2, writer2)
-        self.assertAlmostEqual(self.cover.percent_pos, 0.95, 2)
-        scaled_pct_pos = round(self.cover.percent_pos * 1000)
-        self.assertEqual(scaled_pct_pos, 949)
+        self.assertEqual(self.cover.pos, 800)
         writer2.write.assert_has_calls(
             [
-                call(EOL(b"POS # 02 04 0950 FFFF FF")),
-                call(EOL(b"POS * 02 04 0972 FFFF FF")),
-                call(EOL(b"POS * 02 04 0949 FFFF FF")),
+                call(EOL(b"POS # 02 04 0800 FFFF FF")),
+                call(EOL(b"POS * 02 04 0950 FFFF FF")),
+                call(EOL(b"POS * 02 04 0900 FFFF FF")),
+                call(EOL(b"POS * 02 04 0850 FFFF FF")),
+                call(EOL(b"POS * 02 04 0800 FFFF FF")),
             ]
         )
-        self.assertEqual(writer2.drain.await_count, 3)
+        self.assertEqual(writer2.drain.await_count, 5)
         writer2.close.assert_called_once()

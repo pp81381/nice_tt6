@@ -31,7 +31,7 @@ async def example1(serial_port):
         message_tracker_task = asyncio.create_task(mgr.message_tracker())
         logger_task = asyncio.create_task(log_cover_state(tt6_cover.cover))
 
-        await tt6_cover.send_drop_pct_command(0.9)
+        await tt6_cover.send_pos_command(900)
         await wait_for_motion_to_complete([tt6_cover.cover])
 
         await tt6_cover.send_simple_command("MOVE_UP")
@@ -55,7 +55,7 @@ async def example2(serial_port):
 
         await asyncio.sleep(1.0)
 
-        # await tt6_cover.send_drop_pct_command(0.060)
+        # await tt6_cover.send_pos_command(60)
         await tt6_cover.send_hex_move_command(254)
         await wait_for_motion_to_complete([tt6_cover.cover])
 

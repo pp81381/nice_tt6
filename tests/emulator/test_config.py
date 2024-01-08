@@ -5,7 +5,6 @@ from unittest.mock import mock_open, patch
 
 from nicett6.emulator.config import build_config, default_config_file
 from nicett6.emulator.controller.line_handler import PRESET_POS_5
-from nicett6.emulator.cover_emulator import percent_pos_to_step_num
 
 
 class TestConfig(TestCase):
@@ -22,7 +21,7 @@ class TestConfig(TestCase):
         self.assertAlmostEqual(screen.step_len, 0.01)
         self.assertAlmostEqual(screen.unadjusted_max_drop, 1.77)
         self.assertAlmostEqual(screen.speed, 0.08)
-        self.assertAlmostEqual(screen.percent_pos, 1.0)
+        self.assertAlmostEqual(screen.pos, 1000)
         mask = config["covers"][1]
         self.assertEqual(mask.name, "mask")
 
@@ -32,10 +31,10 @@ class TestConfig(TestCase):
         self.assertEqual(config["port"], 50300)
 
     def test_build_config3(self):
-        config = build_config(["-f", self.filename, "-i", "screen", "0.75"])
+        config = build_config(["-f", self.filename, "-i", "screen", "750"])
         self.assertEqual(len(config["covers"]), 2)
         screen = config["covers"][0]
-        self.assertAlmostEqual(screen.percent_pos, 0.75)
+        self.assertAlmostEqual(screen.pos, 750)
 
     def test_build_config4(self):
         """Test web_on=true, preset_pos_5 set in config file"""
@@ -50,8 +49,8 @@ class TestConfig(TestCase):
                     "step_len": 0.01,
                     "max_drop": 1.77,
                     "speed": 0.08,
-                    "percent_pos": 1.0,
-                    "preset_pos_5": 0.5
+                    "pos": 1000,
+                    "preset_pos_5": 500
                 }
             ]
         }
@@ -68,10 +67,9 @@ class TestConfig(TestCase):
             self.assertAlmostEqual(screen.step_len, 0.01)
             self.assertAlmostEqual(screen.unadjusted_max_drop, 1.77)
             self.assertAlmostEqual(screen.speed, 0.08)
-            self.assertAlmostEqual(screen.percent_pos, 1.0)
+            self.assertEqual(screen.pos, 1000)
             self.assertEqual(len(screen.presets), 1)
-            expected_pos_5 = percent_pos_to_step_num(0.5, screen.max_steps)
-            self.assertEqual(screen.presets[PRESET_POS_5], expected_pos_5)
+            self.assertEqual(screen.presets[PRESET_POS_5], 500)
 
     def test_build_config5a(self):
         """Test web_on config"""
@@ -128,8 +126,8 @@ class TestConfig(TestCase):
         ioerr = StringIO()
         with redirect_stderr(ioerr):
             with self.assertRaises(SystemExit):
-                build_config(["-f", self.filename, "-i", "screen", "1.01"])
-            expected_message = "error: Invalid percentage specified for screen (range is 0.0 for fully down to 1.0 for fully up)\n"
+                build_config(["-f", self.filename, "-i", "screen", "1010"])
+            expected_message = "error: Invalid initial_pos specified for screen (range is 0 for fully down to 1000 for fully up)\n"
             message = ioerr.getvalue()[-len(expected_message) :]
             self.assertEqual(expected_message, message)
 

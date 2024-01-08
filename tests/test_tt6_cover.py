@@ -16,11 +16,11 @@ class TestHandleResponsesMessage(IsolatedAsyncioTestCase):
 
     async def test1(self):
         await self.tt6_cover.handle_response_message(PctPosResponse(self.tt_addr, 250))
-        self.cover.set_drop_pct.assert_awaited_once_with(0.25)
+        self.cover.set_pos.assert_awaited_once_with(250)
 
     async def test2(self):
         await self.tt6_cover.handle_response_message(PctAckResponse(self.tt_addr, 500))
-        self.cover.set_target_drop_pct_hint.assert_awaited_once_with(0.5)
+        self.cover.set_target_pos_hint.assert_awaited_once_with(500)
 
     async def test3(self):
         await self.tt6_cover.handle_response_message(
@@ -38,13 +38,13 @@ class TestHandleResponsesMessage(IsolatedAsyncioTestCase):
         await self.tt6_cover.handle_response_message(
             HexPosResponse(self.tt_addr, CommandCode.MOVE_POS, 0x00)
         )
-        self.cover.set_target_drop_pct_hint.assert_awaited_once_with(0.0)
+        self.cover.set_target_pos_hint.assert_awaited_once_with(0)
 
     async def test6(self):
         await self.tt6_cover.handle_response_message(
             HexPosResponse(self.tt_addr, CommandCode.MOVE_POS, 0xFF)
         )
-        self.cover.set_target_drop_pct_hint.assert_awaited_once_with(1.0)
+        self.cover.set_target_pos_hint.assert_awaited_once_with(1000)
 
     async def test7(self):
         await self.tt6_cover.handle_response_message(
@@ -61,8 +61,8 @@ class TestHandleSendingMessage(IsolatedAsyncioTestCase):
         self.tt6_cover = TT6Cover(self.tt_addr, self.cover, self.writer)
 
     async def test1(self):
-        await self.tt6_cover.send_drop_pct_command(0.5)
-        self.writer.send_web_move_command.assert_awaited_with(self.tt_addr, 0.5)
+        await self.tt6_cover.send_pos_command(500)
+        self.writer.send_web_move_command.assert_awaited_with(self.tt_addr, 500)
 
     async def test2(self):
         await self.tt6_cover.send_simple_command("MOVE_UP")

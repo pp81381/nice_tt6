@@ -120,7 +120,7 @@ Sent by the controller in response to a "web position request"
 Property|Description
 --|--
 `tt_addr`|the `TTBusDeviceAddress` of the TTBus device
-`pct_pos`|the position as a value between 0.0 (fully down) and 1.0 (fully up)
+`pos`|the position as a value between 0 (fully down) and 1000 (fully up)
 
 ### InformationalResponse
 
@@ -148,7 +148,7 @@ Method|Description
 `TT6Writer.send_web_off()`|Send the WEB_OFF command to the controller to disable web commands and to instruct the controller not to send the motor positions as they move
 `TT6Writer.send_simple_command(tt_addr, cmd_name)`|Send `cmd_name` to the TTBus device at `tt_addr`<br>See the table below for a list of all valid `cmd_name` values
 `TT6Writer.send_hex_move_command(tt_addr, hex_pos)`|Instruct the controller to move the TTBus device at `tt_addr` to `hex_pos`<br>`hex_pos` is a value between 0x00 (fully down) and 0xFF (fully up)
-`TT6Writer.send_web_move_command(tt_addr, pct_pos)`|Instruct the controller to move the TTBus device at `tt_addr` to `pct_pos`<br>`pct_pos` is a value between 0.0 (fully down) and 1.0 (fully up)<br>Out of range values for `pct_pos` will be rounded up or down accordingly<br>Web commands must be enabled for this command to work
+`TT6Writer.send_web_move_command(tt_addr, pos)`|Instruct the controller to move the TTBus device at `tt_addr` to `pos`<br>`pos` is a value between 0 (fully down) and 1000 (fully up)<br>Out of range values for `pos` will be rounded up or down accordingly<br>Web commands must be enabled for this command to work
 `TT6Writer.send_web_pos_request(tt_addr)`|Send a request to the controller to send the position of the TTBus device at `tt_addr`<br>Web commands must be enabled for this command to work
 `TT6Writer.process_request(coro, [time_window])`|Send a command and collect the response messages that arrive in time_window
 
@@ -219,7 +219,7 @@ async def example(serial_port):
         message_tracker_task = asyncio.create_task(mgr.message_tracker())
         logger_task = asyncio.create_task(log_cover_state(tt6_cover.cover))
 
-        await tt6_cover.send_drop_pct_command(0.9)
+        await tt6_cover.send_pos_command(900)
         await wait_for_motion_to_complete([tt6_cover.cover])
 
         await tt6_cover.send_simple_command("MOVE_UP")
@@ -260,7 +260,7 @@ Method|Description
 
 A sensor class that can be used to monitor the position of a cover.  Could be used to monitor a retractable projector screen or a garage door.  Designed for use with Home Assistant.
 
-Cover is an `AsyncObservable` and will notify any attached objects of type `AsyncObserver` if the `drop_pct` is changed
+Cover is an `AsyncObservable` and will notify any attached objects of type `AsyncObserver` if the position is changed
 
 Constructor parameters:
 
@@ -281,18 +281,18 @@ Has the following properties and methods:
 
 Property|Description
 --|--
-`Cover.drop_pct`|the percentage drop (0.0 = fully down, 1.0 = fully up)
-`Cover.drop`|drop in metres
+`Cover.pos`|the cover position (0 = fully down, 1000 = fully up)
+`Cover.drop`|drop in metres (0.0 = fully up, max_drop = fully down)
 `Cover.is_moving`|returns True if the cover has moved recently
 `Cover.is_fully_up`|returns True if the cover is fully up
 `Cover.is_fully_down`|returns True if the cover is fully down
-`Cover.is_going_up`|returns True if the cover is going up<br>will only be meaningful after `drop_pct` has been set by the first POS message coming back from the cover for a movement
-`Cover.is_going_down`|returns True if the cover is going down<br>will only be meaningful after `drop_pct` has been set by the first POS message coming back from the cover for a movement
+`Cover.is_going_up`|returns True if the cover is going up<br>will only be meaningful after the position has been set by the first POS message coming back from the cover for a movement
+`Cover.is_going_down`|returns True if the cover is going down<br>will only be meaningful after the position has been set by the first POS message coming back from the cover for a movement
 
 
 Method|Description
 --|--
-`Cover.set_drop_pct`|Set the percentage drop (0.0 = fully down, 1.0 = fully up) - async<br>Will notify observers of the state change
+`Cover.set_pos`|Set the position (0 = fully down, 1000 = fully up) - async<br>Will notify observers of the state change
 `Cover.moved()`|Called to indicate movement<br>When initiating movement, call `moved()` so that `is_moving` will be meaningful in the interval before the first POS message comes back from the cover<br>Will notify observers of the state change
 `Cover.set_idle()`|Called to indicate that the cover is idle<br>After detecting that the cover is idle, call `set_idle()` so that the next movement direction will be correctly inferred<br>Will notify observers of the state change
 
@@ -316,8 +316,8 @@ Property|Description
 Method|Description
 --|--
 `TT6Cover.send_pos_request()`|Send a POS request to the controller
-`TT6Cover.send_drop_pct_command(drop_pct)`|Send a POS command to the controller to set the drop percentage of the Cover to `drop_pct`<br>`drop_pct` should be between 0.0 (fully down) and 1.0 (fully up)<br>Out of range values for `drop_pct` will be rounded up/down accordingly
-`TT6Cover.send_hex_move_command()`|Send a POS command to the controller to set the drop percentage of the Cover to `hex_pos`<br>`hex_pos` is a value between 0x00 (fully down) and 0xFF (fully up)
+`TT6Cover.send_pos_command(pos)`|Send a POS command to the controller to set the position of the Cover to `pos`<br>`pos` should be between 0 (fully down) and 1000 (fully up)<br>Out of range values for `pos` will be rounded up/down accordingly
+`TT6Cover.send_hex_move_command()`|Send a POS command to the controller to set the position of the Cover to `hex_pos`<br>`hex_pos` is a value between 0x00 (fully down) and 0xFF (fully up)
 `TT6Cover.send_simple_command(cmd_name)`|Send a [simple command](#command-codes) to the controller for the Cover
 
 ## PostMovementNotifier
@@ -410,7 +410,7 @@ Usage:
 
 ```
 usage: python -m nicett6.emulator [-h] [-f FILENAME] [-p PORT] [-w] [-W]
-                   [-i cover_name percentage]
+                   [-i cover_name initial_pos]
 
 optional arguments:
   -h, --help            show this help message and exit
@@ -419,8 +419,8 @@ optional arguments:
   -p PORT, --port PORT  port to serve on
   -w, --web_on          emulator starts up in web_on mode
   -W, --web_off         emulator starts up in web_off mode
-  -i cover_name percentage, --initial_pos cover_name percentage
-                        override the initial percentage position for cover
+  -i cover_name initial_pos, --initial_pos cover_name initial_pos
+                        override the initial position for cover
 ```
 
 A sample `config.json` file is provided in the `emulator/config` folder

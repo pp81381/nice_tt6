@@ -21,7 +21,7 @@ def tt6cover_from_dict(d):
         d["step_len"],
         d["max_drop"],
         d["speed"],
-        d.get("percent_pos", 1.0),
+        d.get("initial_pos", 1000),
     )
     if "preset_pos_1" in d:
         cover.init_preset(PRESET_POS_1, d["preset_pos_1"])
@@ -74,8 +74,8 @@ def build_config(args=None):
         "--initial_pos",
         action="append",
         nargs=2,
-        metavar=("cover_name", "percentage"),
-        help="override the initial percentage position for cover",
+        metavar=("cover_name", "initial_pos"),
+        help="override the initial position for cover",
     )
     args = parser.parse_args(args=args)
 
@@ -90,21 +90,21 @@ def build_config(args=None):
             cover_config_by_name[item["name"]] = item
 
     if args.initial_pos:
-        for cover_name, percentage_str in args.initial_pos:
+        for cover_name, initial_pos_str in args.initial_pos:
             if cover_name not in cover_config_by_name:
                 parser.error(f"Invalid cover_name: {cover_name}")
             cover_config = cover_config_by_name[cover_name]
             try:
-                percent_pos = float(percentage_str)
+                initial_pos = int(initial_pos_str)
             except ValueError:
                 parser.error(
-                    f"Invalid value specified for {cover_name}: {percentage_str}"
+                    f"Invalid value specified for {cover_name}: {initial_pos_str}"
                 )
-            if percent_pos < 0.0 or percent_pos > 1.0:
+            if initial_pos < 0 or initial_pos > 1000:
                 parser.error(
-                    f"Invalid percentage specified for {cover_name} (range is 0.0 for fully down to 1.0 for fully up)"
+                    f"Invalid initial_pos specified for {cover_name} (range is 0 for fully down to 1000 for fully up)"
                 )
-            cover_config["percent_pos"] = percent_pos
+            cover_config["initial_pos"] = initial_pos
 
     covers = []
     for c in cover_config_by_name.values():

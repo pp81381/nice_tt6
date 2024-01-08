@@ -5,7 +5,7 @@ from asyncio import sleep as notifier_asyncio_sleep
 from time import perf_counter
 from typing import Iterable
 
-from nicett6.utils import AsyncObservable, check_pct
+from nicett6.utils import AsyncObservable, check_pos
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -15,17 +15,17 @@ POLLING_INTERVAL = 0.2
 class Cover(AsyncObservable):
     """A sensor class that can be used to monitor the position of a cover"""
 
-    MOVEMENT_THRESHOLD_INTERVAL = 2.7
-    IS_FULLY_UP_PCT = 0.95
-    IS_FULLY_DOWN_PCT = 0.05
+    MOVEMENT_THRESHOLD_INTERVAL: float = 2.7
+    IS_FULLY_UP_POS: int = 950
+    IS_FULLY_DOWN_POS: int = 5
 
     def __init__(self, name: str, max_drop: float) -> None:
         super().__init__()
         self.name = name
         self.max_drop = max_drop
-        self._drop_pct = 1.0
+        self._pos: int = 1000
         self._prev_movement = perf_counter() - self.MOVEMENT_THRESHOLD_INTERVAL
-        self._prev_drop_pct = self._drop_pct
+        self._prev_pos: int = self._pos
         self._notifier = PostMovementNotifier(self)
         self.idle_event = Event()
         self.idle_event.set()
@@ -33,7 +33,7 @@ class Cover(AsyncObservable):
     def __repr__(self):
         return (
             f"Cover: {self.name}, {self.max_drop}, "
-            f"{self._drop_pct}, {self._prev_drop_pct}, "
+            f"{self._pos}, {self._prev_pos}, "
             f"{self._prev_movement}"
         )
 
@@ -43,8 +43,8 @@ class Cover(AsyncObservable):
             f"{msg}; "
             f"name: {self.name}; "
             f"max_drop: {self.max_drop}; "
-            f"drop_pct: {self.drop_pct}; "
-            f"_prev_drop_pct: {self._prev_drop_pct}; "
+            f"pos: {self.pos}; "
+            f"_prev_pos: {self._prev_pos}; "
             f"is_moving: {self.is_moving}; "
             f"is_going_down: {self.is_going_down}; "
             f"is_going_up: {self.is_going_up}; "
@@ -53,19 +53,21 @@ class Cover(AsyncObservable):
         )
 
     @property
-    def drop_pct(self) -> float:
-        return self._drop_pct
+    def pos(self) -> int:
+        """Native position: from 0 (fully down) to 1000 (fully up)"""
+        return self._pos
 
-    async def set_drop_pct(self, value: float):
-        """Drop as a percentage (0.0 fully down to 1.0 fully up)"""
-        prev_drop_pct = self._drop_pct  # Preserve state in case of exception
-        self._drop_pct = check_pct(f"{self.name} drop", value)
-        self._prev_drop_pct = prev_drop_pct
+    async def set_pos(self, value: int) -> None:
+        """Position (0 fully down to 1000 fully up)"""
+        prev_pos = self._pos  # Preserve state in case of exception
+        self._pos = check_pos(f"{self.name} pos", value)
+        self._prev_pos = prev_pos
         await self.moved()
 
     @property
     def drop(self) -> float:
-        return (1.0 - self._drop_pct) * self.max_drop
+        """Drop in length units from 0.0 when fully up to max_drop when fully down"""
+        return (1000 - self._pos) * self.max_drop / 1000.0
 
     async def moved(self) -> None:
         """Called to indicate movement"""
@@ -76,7 +78,7 @@ class Cover(AsyncObservable):
 
     async def set_idle(self) -> None:
         """Called to indicate that movement has finished"""
-        self._prev_drop_pct = self._drop_pct
+        self._prev_pos = self._pos
         self._prev_movement = perf_counter() - self.MOVEMENT_THRESHOLD_INTERVAL
         self.idle_event.set()
         await self.notify_observers()
@@ -98,48 +100,48 @@ class Cover(AsyncObservable):
     @property
     def is_fully_up(self) -> bool:
         """Returns True if the cover is fully up"""
-        return not self.is_moving and self.drop_pct > self.IS_FULLY_UP_PCT
+        return not self.is_moving and self._pos > self.IS_FULLY_UP_POS
 
     @property
     def is_fully_down(self) -> bool:
         """Returns True if the cover is fully down"""
-        return not self.is_moving and self.drop_pct < self.IS_FULLY_DOWN_PCT
+        return not self.is_moving and self._pos < self.IS_FULLY_DOWN_POS
 
     @property
     def is_going_up(self) -> bool:
         """
         Returns True if the cover is going up
 
-        Will only be meaningful after drop_pct has been set by the first
+        Will only be meaningful after _pos has been set by the first
         POS message coming back from the cover for a movement
         """
-        return self.is_moving and self._drop_pct > self._prev_drop_pct
+        return self.is_moving and self._pos > self._prev_pos
 
     @property
     def is_going_down(self) -> bool:
         """
         Returns True if the cover is going down
 
-        Will only be meaningful after drop_pct has been set by the first
+        Will only be meaningful after _pos has been set by the first
         POS message coming back from the cover for a movement
         """
-        return self.is_moving and self._drop_pct < self._prev_drop_pct
+        return self.is_moving and self._pos < self._prev_pos
 
     async def set_going_up(self) -> None:
         """Force the state to is_going_up"""
-        self._prev_drop_pct = self._drop_pct - 0.0001
+        self._prev_pos = self._pos - 1
         await self.moved()
 
     async def set_going_down(self) -> None:
         """Force the state to is_going_down"""
-        self._prev_drop_pct = self._drop_pct + 0.0001
+        self._prev_pos = self._pos + 1
         await self.moved()
 
-    async def set_target_drop_pct_hint(self, target_drop_pct: float) -> None:
-        """ "Force the state to is_going_up/down based on target drop_pct"""
-        if target_drop_pct < self._drop_pct:
+    async def set_target_pos_hint(self, target_pos: int) -> None:
+        """ "Force the state to is_going_up/down based on target_pos"""
+        if target_pos < self._pos:
             await self.set_going_down()
-        elif target_drop_pct > self._drop_pct:
+        elif target_pos > self._pos:
             await self.set_going_up()
 
     async def stop_notifier(self) -> None:

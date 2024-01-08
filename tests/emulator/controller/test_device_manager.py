@@ -15,7 +15,7 @@ class TestRegistration(IsolatedAsyncioTestCase):
 
     async def asyncSetUp(self):
         self.device = TT6CoverEmulator(
-            "screen", TTBusDeviceAddress(0x02, 0x04), 0.01, 1.77, 0.08, 1.0
+            "screen", TTBusDeviceAddress(0x02, 0x04), 0.01, 1.77, 0.08, 1000
         )
         writer_manager = AsyncMock()
         self.web_pos_manager = WebPosManager(writer_manager, False)

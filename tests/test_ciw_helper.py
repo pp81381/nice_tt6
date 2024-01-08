@@ -14,9 +14,9 @@ class TestCIWHelper(IsolatedAsyncioTestCase):
         """Screen fully up, mask fully up"""
         self.assertAlmostEqual(self.helper.screen.max_drop, 2.0)
         self.assertAlmostEqual(self.helper.image_width, 3.2)
-        self.assertAlmostEqual(self.helper.screen.drop_pct, 1.0)
+        self.assertEqual(self.helper.screen.pos, 1000)
         self.assertAlmostEqual(self.helper.screen.drop, 0.0)
-        self.assertAlmostEqual(self.helper.mask.drop_pct, 1.0)
+        self.assertEqual(self.helper.mask.pos, 1000)
         self.assertAlmostEqual(self.helper.mask.drop, 0.0)
         self.assertEqual(self.helper.image_is_visible, False)
         self.assertIsNone(self.helper.image_height)
@@ -26,12 +26,12 @@ class TestCIWHelper(IsolatedAsyncioTestCase):
 
     async def test2(self):
         """Screen fully down, mask fully up"""
-        await self.helper.screen.set_drop_pct(0.0)
+        await self.helper.screen.set_pos(0)
         self.assertAlmostEqual(self.helper.screen.max_drop, 2.0)
         self.assertAlmostEqual(self.helper.image_width, 3.2)
-        self.assertAlmostEqual(self.helper.screen.drop_pct, 0.0)
+        self.assertEqual(self.helper.screen.pos, 0)
         self.assertAlmostEqual(self.helper.screen.drop, 2.0)
-        self.assertAlmostEqual(self.helper.mask.drop_pct, 1.0)
+        self.assertEqual(self.helper.mask.pos, 1000)
         self.assertAlmostEqual(self.helper.mask.drop, 0.0)
         self.assertEqual(self.helper.image_is_visible, True)
         self.assertIsNotNone(self.helper.image_height)
@@ -49,12 +49,12 @@ class TestCIWHelper(IsolatedAsyncioTestCase):
 
     async def test3(self):
         """Screen fully up, mask fully down"""
-        await self.helper.mask.set_drop_pct(0.0)
+        await self.helper.mask.set_pos(0)
         self.assertAlmostEqual(self.helper.screen.max_drop, 2.0)
         self.assertAlmostEqual(self.helper.image_width, 3.2)
-        self.assertAlmostEqual(self.helper.screen.drop_pct, 1.0)
+        self.assertEqual(self.helper.screen.pos, 1000)
         self.assertAlmostEqual(self.helper.screen.drop, 0.0)
-        self.assertAlmostEqual(self.helper.mask.drop_pct, 0.0)
+        self.assertEqual(self.helper.mask.pos, 0)
         self.assertAlmostEqual(self.helper.mask.drop, 0.8)
         self.assertEqual(self.helper.image_is_visible, False)
         self.assertIsNone(self.helper.image_height)
@@ -64,12 +64,12 @@ class TestCIWHelper(IsolatedAsyncioTestCase):
 
     async def test4(self):
         """Screen hiding top border, mask fully up"""
-        await self.helper.screen.set_drop_pct(0.15 / 2.0)
+        await self.helper.screen.set_pos(75)
         self.assertAlmostEqual(self.helper.screen.max_drop, 2.0)
         self.assertAlmostEqual(self.helper.image_width, 3.2)
-        self.assertAlmostEqual(self.helper.screen.drop_pct, 0.15 / 2.0)
+        self.assertEqual(self.helper.screen.pos, 75)
         self.assertAlmostEqual(self.helper.screen.drop, 1.85)
-        self.assertAlmostEqual(self.helper.mask.drop_pct, 1.0)
+        self.assertEqual(self.helper.mask.pos, 1000)
         self.assertAlmostEqual(self.helper.mask.drop, 0.0)
         self.assertEqual(self.helper.image_is_visible, True)
         self.assertIsNotNone(self.helper.image_height)
@@ -87,24 +87,24 @@ class TestCIWHelper(IsolatedAsyncioTestCase):
 
     async def test5(self):
         """Screen fully down, mask set for 2.35 absolute"""
-        await self.helper.screen.set_drop_pct(0.0)
-        await self.helper.mask.set_drop_pct(0.26462766)
+        await self.helper.screen.set_pos(0)
+        await self.helper.mask.set_pos(265)
         self.assertAlmostEqual(self.helper.screen.max_drop, 2.0)
         self.assertAlmostEqual(self.helper.image_width, 3.2)
-        self.assertAlmostEqual(self.helper.screen.drop_pct, 0.0)
+        self.assertEqual(self.helper.screen.pos, 0)
         self.assertAlmostEqual(self.helper.screen.drop, 2.0)
-        self.assertAlmostEqual(self.helper.mask.drop_pct, 0.26462766)
-        self.assertAlmostEqual(self.helper.mask.drop, 0.588297872)
+        self.assertEqual(self.helper.mask.pos, 265)
+        self.assertAlmostEqual(self.helper.mask.drop, 0.588)
         self.assertEqual(self.helper.image_is_visible, True)
         self.assertIsNotNone(self.helper.image_height)
         self.assertIsNotNone(self.helper.aspect_ratio)
         self.assertIsNotNone(self.helper.image_diagonal)
         self.assertIsNotNone(self.helper.image_area)
         if self.helper.image_height is not None:
-            self.assertAlmostEqual(self.helper.image_height, 1.361702128)
+            self.assertAlmostEqual(self.helper.image_height, 1.362)
         if self.helper.aspect_ratio is not None:
-            self.assertAlmostEqual(self.helper.aspect_ratio, 2.35)
+            self.assertAlmostEqual(self.helper.aspect_ratio, 2.34948605)
         if self.helper.image_diagonal is not None:
-            self.assertAlmostEqual(self.helper.image_diagonal, 3.477676334)
+            self.assertAlmostEqual(self.helper.image_diagonal, 3.47779298)
         if self.helper.image_area is not None:
-            self.assertAlmostEqual(self.helper.image_area, 4.35744681)
+            self.assertAlmostEqual(self.helper.image_area, 4.3584)

@@ -34,19 +34,19 @@ class HexPosResponse:
 @dataclass
 class PctPosResponse:
     tt_addr: TTBusDeviceAddress
-    pct_pos: int
+    pos: int
 
     def __repr__(self):
-        return f"{type(self).__name__}({self.tt_addr}, {self.pct_pos})"
+        return f"{type(self).__name__}({self.tt_addr}, {self.pos})"
 
 
 @dataclass
 class PctAckResponse:
     tt_addr: TTBusDeviceAddress
-    pct_pos: int
+    pos: int
 
     def __repr__(self):
-        return f"{type(self).__name__}({self.tt_addr}, {self.pct_pos})"
+        return f"{type(self).__name__}({self.tt_addr}, {self.pos})"
 
 
 @dataclass
@@ -100,8 +100,8 @@ def _decode_web_pos_or_ack_response(
     if args[4] != "FFFF" or args[5] != "FF":
         raise InvalidResponseError()
     tt_addr = TTBusDeviceAddress(hex_arg_to_int(args[1]), hex_arg_to_int(args[2]))
-    pct_pos = pct_arg_to_int(args[3])
-    return factory(tt_addr, pct_pos)
+    pos = pct_arg_to_int(args[3])
+    return factory(tt_addr, pos)
 
 
 def _decode_web_response(args: list[str], line: str) -> ResponseMessageType:

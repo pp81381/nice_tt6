@@ -81,10 +81,10 @@ class AsyncObservable:
             await o.update(self)
 
 
-def check_pct(name: str, pct: float):
-    if pct < 0.0 - PCT_ABS_TOL or pct > 1.0 + PCT_ABS_TOL:
-        raise ValueError(f"{name} percentage ({pct}) out of range")
-    return pct
+def check_pos(name: str, pos: int) -> int:
+    if pos < 0 or pos > 1000:
+        raise ValueError(f"{name} position ({pos}) out of range")
+    return pos
 
 
 def check_aspect_ratio(aspect_ratio: float) -> None:

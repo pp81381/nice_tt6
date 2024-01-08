@@ -1,20 +1,12 @@
 import asyncio
 import logging
 from contextlib import AsyncExitStack
+from typing import Coroutine, Dict
 
-from nicett6.utils import AsyncObservable
+from nicett6.ttbus_device import TTBusDeviceAddress
+from nicett6.utils import AsyncObservable, check_pos
 
 _LOGGER = logging.getLogger(__name__)
-
-
-def percent_pos_to_step_num(percent_pos, max_steps):
-    """Calculate step number from percentage position.   Note that 100% means fully up."""
-    return round((1 - percent_pos) * max_steps)
-
-
-def step_num_to_percent_pos(step_num, max_steps):
-    """Calculate percentage position from step number.   Note that 100% means fully up."""
-    return (max_steps - step_num) / max_steps
 
 
 class MoverManager:
@@ -37,12 +29,12 @@ class MoverManager:
     unittests if you construct an object of this type in them
     """
 
-    def __init__(self):
+    def __init__(self) -> None:
         self.next_mover_lock = asyncio.Lock()
         self.current_mover_lock = asyncio.Lock()
         self.stop_event = asyncio.Event()
 
-    async def mover_manager(self, mover_coro):
+    async def mover_manager(self, mover_coro: Coroutine[None, None, None]) -> None:
         """Make sure that only one mover_coro is active at any time"""
         async with AsyncExitStack() as next_mover_cm:
             await next_mover_cm.enter_async_context(self.next_mover_lock)
@@ -67,11 +59,10 @@ class TT6CoverEmulator(AsyncObservable):
     """
     Emulate a Cover with a stepper motor that moves at a constant rate
 
-    The step is the unit of movement and is specified in metres
-    The max_drop is specified in metres (the actual drop will be rounded down to a fixed number of steps)
+    The step_len is the unit of movement and is specified in metres
+    The unadjusted_max_drop is specified in metres (the actual drop will be rounded down to a fixed number of steps)
     The speed is specified in metres/sec
-    The percent_pos is specified in percent
-    1.0 = 100% = fully up; 0 = 0% = fully down
+    The optional initial_pos is specified in thousandths (1000 = fully up; 0 = fully down)
 
     As an example, a screen might have a 2.0m drop and the mask might have a 0.5m drop
     Both covers might move at 0.05 metres/sec in steps of 0.01 metres
@@ -79,61 +70,56 @@ class TT6CoverEmulator(AsyncObservable):
     The screen would drop in 40 secs
     """
 
+    STEPS_PER_NOTIFICATION = 10
+
     def __init__(
-        self, name, tt_addr, step_len, unadjusted_max_drop, speed, percent_pos
-    ):
+        self,
+        name: str,
+        tt_addr: TTBusDeviceAddress,
+        step_len: float,
+        unadjusted_max_drop: float,
+        speed: float,
+        initial_pos: int,
+    ) -> None:
         super().__init__()
         self.name = name
         self.tt_addr = tt_addr
-        if percent_pos < 0.0 or percent_pos > 1.0:
-            raise ValueError(
-                f"Invalid percent_pos specified for {self.name} (range is 0.0 for fully down to 1.0 for fully up)"
-            )
         self.step_len = step_len
         self.unadjusted_max_drop = unadjusted_max_drop
-        self.max_steps = int(self.unadjusted_max_drop // self.step_len)
+        self.max_drop = int(self.unadjusted_max_drop // self.step_len) * self.step_len
+        self.pos_increment_per_step = int(
+            1000 * self.step_len / self.unadjusted_max_drop
+        )
         self.speed = speed
-        self.step_increment = 5
-        self.step_num = percent_pos_to_step_num(percent_pos, self.max_steps)
-        self._mover_manager = None
-        self.presets = {}
+        self.pos = check_pos("intitial_pos", initial_pos)
+        self._mover_manager: MoverManager | None = None
+        self.presets: Dict[str, int] = {}
+        self._secs_per_pos_increment = self.step_len / (
+            self.speed * self.pos_increment_per_step
+        )
 
     @property
-    def drop(self):
-        return self.step_num * self.step_len
+    def drop(self) -> float:
+        return self.step_len * (1000 - self.pos) / self.pos_increment_per_step
 
     @property
-    def max_drop(self):
-        return self.max_steps * self.step_len
-
-    @property
-    def steps_per_sec(self):
-        return self.speed / self.step_len
-
-    @property
-    def percent_per_sec(self):
-        return self.steps_per_sec / self.max_steps
-
-    @property
-    def percent_pos(self):
-        return step_num_to_percent_pos(self.step_num, self.max_steps)
+    def hex_pos(self) -> int:
+        return round(self.pos * 0.255)
 
     def _get_mover_manager(self) -> MoverManager:
         if self._mover_manager is None:
             self._mover_manager = MoverManager()
         return self._mover_manager
 
-    def log_position(self, message):
-        _LOGGER.info(
-            f"Pos for {self.name}: {self.percent_pos:%}, step_num {self.step_num} ({message})"
-        )
+    def log_position(self, message: str) -> None:
+        _LOGGER.info(f"Pos for {self.name}: pos {self.pos} ({message})")
 
-    async def _move_increment(self, num_steps, notify):
-        """Move an increment of num_steps.  Return False if stop event received."""
-        delay = abs(self.step_len / self.speed * num_steps)
+    async def _move(self, pos_increment: int, notify: bool) -> bool:
+        """Move pos by increment.  Return False if stop event received."""
+        delay = abs(self._secs_per_pos_increment * pos_increment)
         if await self._get_mover_manager().sleep(delay):
-            self.step_num += num_steps
-            self.log_position(f"moved {num_steps} steps")
+            self.pos += pos_increment
+            self.log_position(f"moved {pos_increment}")
             if notify:
                 await self.notify_observers()
             return True
@@ -144,113 +130,103 @@ class TT6CoverEmulator(AsyncObservable):
                 await self.notify_observers()
             return False
 
-    async def _move_to_step_num(self, to_step_num, notify):
-        if to_step_num < 0 or to_step_num > self.max_steps:
-            raise ValueError(
-                f"Invalid to_step_num specified for {self.name} (range is 0 for fully up to {self.max_steps} for fully down)"
-            )
-
-        if self.step_num == to_step_num:
+    async def _move_to_pos(self, to_pos: int, notify: bool) -> None:
+        if self.pos == to_pos:
             self.log_position("movement not needed")
             return
 
-        self.log_position(f"movement initiated to step {to_step_num}")
+        self.log_position(f"movement initiated to pos {to_pos}")
 
-        steps_to_move = to_step_num - self.step_num
-        step_increment = self.step_increment * (1 if steps_to_move >= 0 else -1)
-        num_whole_increments = steps_to_move // step_increment
+        to_move = to_pos - self.pos
+        move_per_notification = (
+            self.pos_increment_per_step
+            * self.STEPS_PER_NOTIFICATION
+            * (1 if to_move >= 0 else -1)
+        )
+        num_notifications = to_move // move_per_notification
 
-        for _ in range(num_whole_increments):
-            if not await self._move_increment(step_increment, notify):
+        for _ in range(num_notifications):
+            if not await self._move(move_per_notification, notify):
+                self.log_position(f"movement interrupted at {self.pos}")
                 return
 
-        residual_steps = steps_to_move - (num_whole_increments * step_increment)
-        if not await self._move_increment(residual_steps, notify):
+        residual_move = to_move - (num_notifications * move_per_notification)
+        if residual_move != 0 and not await self._move(residual_move, notify):
+            self.log_position(f"movement interrupted at {self.pos}")
             return
 
         self.log_position(f"movement complete")
 
-    async def move_to_step_num(self, to_step_num):
-        """Move the Cover to a specific step number"""
-        await self._get_mover_manager().mover_manager(
-            self._move_to_step_num(to_step_num, True)
-        )
+    async def move_to_pos(self, to_pos: int) -> None:
+        """Move to pos where pos is 0 for fully down to 1000 for fully up"""
+        await self._get_mover_manager().mover_manager(self._move_to_pos(to_pos, True))
 
-    async def _move_num_steps(self, requested_steps, notify):
-        """Move a relative number of steps."""
-        to_step_num = self.step_num + requested_steps
-        if to_step_num < 0:
-            to_step_num = 0
-        elif to_step_num > self.max_steps:
-            to_step_num = self.max_steps
-        num_steps = to_step_num - self.step_num
-        if num_steps != requested_steps:
+    async def _move_increment(self, requested_increment: int, notify: bool) -> None:
+        """Relative pos movement where positive is up and negative is down"""
+        to_pos = self.pos + requested_increment
+        if to_pos < 0:
+            to_pos = 0
+        elif to_pos > 1000:
+            to_pos = 1000
+        increment = to_pos - self.pos
+        if increment != requested_increment:
             self.log_position(
-                f"requested relative movement of {requested_steps} steps limited to {num_steps} steps"
+                f"requested relative movement of {requested_increment} limited to {increment}"
             )
-        if num_steps == 0:
-            self.log_position(f"relative move not needed - already at {to_step_num}")
+        if increment == 0:
+            self.log_position(f"relative move not needed - already at {to_pos}")
         else:
             self.log_position(
-                f"relative movement of {num_steps} steps initiated to step {to_step_num}"
+                f"relative movement of {increment} initiated to position {to_pos}"
             )
             await self._get_mover_manager().mover_manager(
-                self._move_to_step_num(to_step_num, notify)
+                self._move_to_pos(to_pos, notify)
             )
 
-    async def stop(self):
+    async def stop(self) -> None:
         """Stop any movement in progress"""
         self.log_position("stop movement requested")
         await self._get_mover_manager().mover_manager(asyncio.sleep(0))
 
-    async def move_up(self):
-        """Move to upper limit"""
-        await self.move_to_step_num(0)
-
-    async def move_down(self):
-        """Move to lower limit"""
-        await self.move_to_step_num(self.max_steps)
-
-    async def move_to_percent_pos(self, to_percent_pos):
-        """Move the Cover to a specific percentage position"""
-        if to_percent_pos < 0.0 or to_percent_pos > 1.0:
+    async def move_to_hex_pos(self, hex_pos: int) -> None:
+        """Move to hex_pos where hex_pos is 0 for fully down to 255 for fully up"""
+        if hex_pos < 0 or hex_pos > 255:
             raise ValueError(
-                f"Invalid to_percent_position specified for {self.name} (range is 0.0 for fully down to 1.0 for fully up)"
+                f"Invalid hex_pos specified for cover {self.name}: range is 0 for fully down to 255 for fully up"
             )
+        pos = round(hex_pos / 0.255)
+        await self.move_to_pos(pos)
 
-        to_step_num = percent_pos_to_step_num(to_percent_pos, self.max_steps)
-        self.log_position(
-            f"movement initiated to {to_percent_pos} (step {to_step_num})"
-        )
-        await self.move_to_step_num(to_step_num)
+    async def move_down(self) -> None:
+        """Move to lower limit"""
+        await self.move_to_pos(0)
 
-    async def move_num_steps(self, requested_steps):
-        await self._move_num_steps(requested_steps, True)
+    async def move_up(self) -> None:
+        """Move to upper limit"""
+        await self.move_to_pos(1000)
 
-    async def move_down_step(self):
-        await self._move_num_steps(1, False)
+    async def move_down_step(self) -> None:
+        await self._move_increment(-self.pos_increment_per_step, False)
 
-    async def move_up_step(self):
-        await self._move_num_steps(-1, False)
+    async def move_up_step(self) -> None:
+        await self._move_increment(self.pos_increment_per_step, False)
 
-    def init_preset(self, preset_name, pct_pos):
-        self.presets[preset_name] = percent_pos_to_step_num(pct_pos, self.max_steps)
+    def init_preset(self, preset_name: str, pos: int) -> None:
+        self.presets[preset_name] = check_pos(preset_name, pos)
 
-    async def move_preset(self, preset_name):
+    async def move_preset(self, preset_name: str) -> None:
         if preset_name in self.presets:
-            await self.move_to_step_num(self.presets[preset_name])
+            await self.move_to_pos(self.presets[preset_name])
 
-    async def store_preset(self, preset_name):
-        self.presets[preset_name] = self.step_num
+    async def store_preset(self, preset_name: str) -> None:
+        self.presets[preset_name] = self.pos
 
-    async def del_preset(self, preset_name):
+    async def del_preset(self, preset_name: str) -> None:
         if preset_name in self.presets:
             del self.presets[preset_name]
 
     def fmt_pos_msg(self) -> str:
-        scaled_pct_pos: int = round(self.percent_pos * 1000)
-        return f"POS * {self.tt_addr.address:02X} {self.tt_addr.node:02X} {scaled_pct_pos:04d} FFFF FF"
+        return f"POS * {self.tt_addr.address:02X} {self.tt_addr.node:02X} {self.pos:04d} FFFF FF"
 
-    def fmt_ack_msg(self, target_pct_pos: float) -> str:
-        scaled_pct_pos: int = round(target_pct_pos * 1000)
-        return f"POS # {self.tt_addr.address:02X} {self.tt_addr.node:02X} {scaled_pct_pos:04d} FFFF FF"
+    def fmt_ack_msg(self, target_pos: int) -> str:
+        return f"POS # {self.tt_addr.address:02X} {self.tt_addr.node:02X} {target_pos:04d} FFFF FF"

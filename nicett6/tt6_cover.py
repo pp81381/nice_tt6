@@ -34,9 +34,9 @@ class TT6Cover:
         _LOGGER.debug(f"sending {cmd_name} to {self.cover.name}")
         await self.writer.send_simple_command(self.tt_addr, cmd_name)
 
-    async def send_drop_pct_command(self, drop_pct: float) -> None:
-        _LOGGER.debug(f"moving {self.cover.name} to {drop_pct}")
-        await self.writer.send_web_move_command(self.tt_addr, drop_pct)
+    async def send_pos_command(self, pos: int) -> None:
+        _LOGGER.debug(f"moving {self.cover.name} to {pos}")
+        await self.writer.send_web_move_command(self.tt_addr, pos)
 
     async def send_hex_move_command(self, hex_pos: int) -> None:
         _LOGGER.debug(f"moving {self.cover.name} to hex pos {hex_pos}")
@@ -48,9 +48,9 @@ class TT6Cover:
 
     async def handle_response_message(self, msg: ResponseMessageType) -> None:
         if isinstance(msg, PctPosResponse):
-            await self.cover.set_drop_pct(msg.pct_pos / 1000.0)
+            await self.cover.set_pos(msg.pos)
         elif isinstance(msg, PctAckResponse):
-            await self.cover.set_target_drop_pct_hint(msg.pct_pos / 1000.0)
+            await self.cover.set_target_pos_hint(msg.pos)
         elif isinstance(msg, AckResponse):
             if (
                 msg.cmd_code == CommandCode.MOVE_UP
@@ -80,4 +80,4 @@ class TT6Cover:
                 await self.cover.moved()
         elif isinstance(msg, HexPosResponse):
             if msg.cmd_code == CommandCode.MOVE_POS:
-                await self.cover.set_target_drop_pct_hint(msg.hex_pos / 255.0)
+                await self.cover.set_target_pos_hint(round(msg.hex_pos / 0.255))

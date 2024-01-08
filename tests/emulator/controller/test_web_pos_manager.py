@@ -9,7 +9,7 @@ from nicett6.ttbus_device import TTBusDeviceAddress
 async def make_test_web_pos_mgr(web_on: bool) -> WebPosManager:
     writer_manager = AsyncMock()
     device_tt_addr = TTBusDeviceAddress(0x02, 0x04)
-    device = TT6CoverEmulator("screen", device_tt_addr, 0.01, 1.77, 0.08, 1.0)
+    device = TT6CoverEmulator("screen", device_tt_addr, 0.01, 1.77, 0.08, 1000)
     web_pos_manager = WebPosManager(writer_manager, web_on)
     device.attach(web_pos_manager)
     await device.notify_observers()

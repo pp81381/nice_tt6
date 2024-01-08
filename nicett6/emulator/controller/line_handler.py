@@ -85,12 +85,11 @@ class LineHandler:
             # Message is written before movement completes
             msg = f"RSP {address:X} {node:X} {cmd_code.value:X} {target_hex_pos:X}"
             await self.write_msg(msg)
-            target_pct_pos = target_hex_pos / 0xFF
-            await cover.move_to_percent_pos(target_pct_pos)
+            await cover.move_to_hex_pos(target_hex_pos)
         elif cmd_code == CommandCode.READ_POS:
             if len(args) != 3:
                 raise InvalidCommandError()
-            hex_pos = round(cover.percent_pos * 0xFF)
+            hex_pos = round(cover.pos * 0xFF / 1000)
             msg = f"RSP {address:X} {node:X} {cmd_code.value:X} {hex_pos:X}"
             await self.write_msg(msg)
         else:
@@ -119,9 +118,9 @@ class LineHandler:
                 )
             await self.write_msg(cover.fmt_pos_msg())
         elif cmd_char == ">":
-            target_pct_pos = pct_arg_to_int(args[3]) / 1000
-            await self.write_msg(cover.fmt_ack_msg(target_pct_pos))
-            await cover.move_to_percent_pos(target_pct_pos)
+            target_pos = pct_arg_to_int(args[3])
+            await self.write_msg(cover.fmt_ack_msg(target_pos))
+            await cover.move_to_pos(target_pos)
         else:
             raise ValueError(f"Invalid command character in web command: {cmd_char!r}")
 

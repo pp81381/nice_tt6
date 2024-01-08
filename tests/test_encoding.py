@@ -42,49 +42,25 @@ class TestEncoding(unittest.TestCase):
 
     def test_encode_web_move_command(self):
         self.assertEqual(
-            Encode.web_move_command(self.mask_motor, 0.0),
+            Encode.web_move_command(self.mask_motor, 0),
             b"POS > 03 04 0000 FFFF FF" + self.TEST_EOL,
         )
         self.assertEqual(
-            Encode.web_move_command(self.mask_motor, 0.6),
+            Encode.web_move_command(self.mask_motor, 600),
             b"POS > 03 04 0600 FFFF FF" + self.TEST_EOL,
         )
         self.assertEqual(
-            Encode.web_move_command(self.mask_motor, 0.60049),
-            b"POS > 03 04 0600 FFFF FF" + self.TEST_EOL,
-        )
-        self.assertEqual(
-            Encode.web_move_command(self.mask_motor, 0.60051),
-            b"POS > 03 04 0601 FFFF FF" + self.TEST_EOL,
-        )
-        self.assertEqual(
-            Encode.web_move_command(self.mask_motor, 1.0),
+            Encode.web_move_command(self.mask_motor, 1000),
             b"POS > 03 04 1000 FFFF FF" + self.TEST_EOL,
         )
 
     def test_encode_web_move_command_range_check(self):
         self.assertEqual(
-            Encode.web_move_command(self.mask_motor, 5.0),
-            b"POS > 03 04 1000 FFFF FF" + self.TEST_EOL,
-        )
-        self.assertEqual(
-            Encode.web_move_command(self.mask_motor, 1.00051),
-            b"POS > 03 04 1000 FFFF FF" + self.TEST_EOL,
-        )
-        self.assertEqual(
-            Encode.web_move_command(self.mask_motor, 1.00049),
+            Encode.web_move_command(self.mask_motor, 5000),
             b"POS > 03 04 1000 FFFF FF" + self.TEST_EOL,
         )
         self.assertEqual(
             Encode.web_move_command(self.mask_motor, -5),
-            b"POS > 03 04 0000 FFFF FF" + self.TEST_EOL,
-        )
-        self.assertEqual(
-            Encode.web_move_command(self.mask_motor, -0.00051),
-            b"POS > 03 04 0000 FFFF FF" + self.TEST_EOL,
-        )
-        self.assertEqual(
-            Encode.web_move_command(self.mask_motor, -0.00049),
             b"POS > 03 04 0000 FFFF FF" + self.TEST_EOL,
         )
 

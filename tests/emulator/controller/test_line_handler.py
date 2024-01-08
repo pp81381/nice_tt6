@@ -151,16 +151,16 @@ class TestHandleMovementCommands(IsolatedAsyncioTestCase):
 
     async def test_handle_read_hex_pos(self):
         line_bytes = b"CMD 02 04 45" + RCV_EOL
-        percent_pos = PropertyMock(return_value=0xAB / 0xFF)
-        type(self.cover).percent_pos = percent_pos
+        pos_mock = PropertyMock(return_value=670)
+        type(self.cover).pos = pos_mock
         await self.line_handler.handle_line(line_bytes)
-        percent_pos.assert_called_once_with()
+        pos_mock.assert_called_once_with()
         self.wrapped_writer.write_msg.assert_awaited_once_with("RSP 2 4 45 AB")
 
     async def test_handle_move_hex_pos(self):
         line_bytes = b"CMD 02 04 40 AB" + RCV_EOL
         await self.line_handler.handle_line(line_bytes)
-        self.cover.move_to_percent_pos.assert_awaited_once_with(0xAB / 0xFF)
+        self.cover.move_to_hex_pos.assert_awaited_once_with(0xAB)
         self.wrapped_writer.write_msg.assert_awaited_once_with("RSP 2 4 40 AB")
 
     async def test_handle_read_pct_pos(self):
@@ -177,7 +177,7 @@ class TestHandleMovementCommands(IsolatedAsyncioTestCase):
         line_bytes = b"POS > 02 04 0500 FFFF FF" + RCV_EOL
         self.web_pos_manager.web_on = True
         await self.line_handler.handle_line(line_bytes)
-        self.cover.move_to_percent_pos.assert_awaited_once_with(0.5)
+        self.cover.move_to_pos.assert_awaited_once_with(500)
 
 
 class TestMovementCommands(IsolatedAsyncioTestCase):
@@ -185,7 +185,7 @@ class TestMovementCommands(IsolatedAsyncioTestCase):
 
     async def asyncSetUp(self):
         self.cover = TT6CoverEmulator(
-            "test_cover", TTBusDeviceAddress(0x02, 0x04), 0.01, 1.77, 0.08, 1.0
+            "test_cover", TTBusDeviceAddress(0x02, 0x04), 0.01, 1.77, 0.08, 1000
         )
         self.wrapped_writer = AsyncMock()
         self.web_pos_manager = AsyncMock()
@@ -201,6 +201,7 @@ class TestMovementCommands(IsolatedAsyncioTestCase):
         )
 
     async def test_stop(self):
+        self.assertEqual(self.cover.drop, 0)
         mover = asyncio.create_task(
             self.line_handler.handle_line(
                 f"CMD 02 04 {CommandCode.MOVE_DOWN.value:02X}".encode("utf-8") + RCV_EOL

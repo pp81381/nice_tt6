@@ -47,22 +47,16 @@ class Encode:
         )
 
     @classmethod
-    def web_move_command(cls, tt_addr: TTBusDeviceAddress, pct: float) -> bytes:
-        """Set position to the percentage given"""
-        thousandths: int = round(pct * 1000.0)
-        if thousandths < 0:
-            _LOGGER.info(
-                f"Requested percentage position for {tt_addr} of {pct}% floored at 0%"
-            )
-            thousandths = 0
-        elif thousandths > 1000:
-            _LOGGER.info(
-                f"Requested percentage position for {tt_addr} of {pct}% capped at 100%"
-            )
-            thousandths = 1000
+    def web_move_command(cls, tt_addr: TTBusDeviceAddress, pos: int) -> bytes:
+        """Set position - pos is from 0 (fully down) to 1000 (fully up)"""
+        if pos < 0:
+            _LOGGER.info(f"Requested position for {tt_addr} of {pos} floored at 0")
+            pos = 0
+        elif pos > 1000:
+            _LOGGER.info(f"Requested position for {tt_addr} of {pos} capped at 1000")
+            pos = 1000
         return cls.fmt_msg(
-            f"POS > {tt_addr.address:02X} {tt_addr.node:02X} "
-            f"{thousandths:04d} FFFF FF"
+            f"POS > {tt_addr.address:02X} {tt_addr.node:02X} " f"{pos:04d} FFFF FF"
         )
 
     @classmethod

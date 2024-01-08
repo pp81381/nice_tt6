@@ -66,10 +66,10 @@ class TT6Writer(MultiplexerWriter):
         await self.write(Encode.simple_command_with_data(tt_addr, "MOVE_POS", hex_pos))
 
     async def send_web_move_command(
-        self, tt_addr: TTBusDeviceAddress, pct_pos: float
+        self, tt_addr: TTBusDeviceAddress, pos: int
     ) -> None:
-        _LOGGER.debug(f"send_web_move_command {pct_pos} to {tt_addr}")
-        await self.write(Encode.web_move_command(tt_addr, pct_pos))
+        _LOGGER.debug(f"send_web_move_command {pos} to {tt_addr}")
+        await self.write(Encode.web_move_command(tt_addr, pos))
 
     async def send_web_pos_request(self, tt_addr: TTBusDeviceAddress) -> None:
         _LOGGER.debug(f"send_web_pos_request to {tt_addr}")

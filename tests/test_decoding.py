@@ -59,7 +59,7 @@ class TestDecoding(unittest.TestCase):
         self.assertIsInstance(res, PctAckResponse)
         if isinstance(res, PctAckResponse):
             self.assertEqual(res.tt_addr, TTBusDeviceAddress(0x03, 0x04))
-            self.assertEqual(res.pct_pos, 500)
+            self.assertEqual(res.pos, 500)
 
     def test_decode_web_response1(self):
         """Web response"""
@@ -67,7 +67,7 @@ class TestDecoding(unittest.TestCase):
         self.assertIsInstance(res, PctPosResponse)
         if isinstance(res, PctPosResponse):
             self.assertEqual(res.tt_addr, TTBusDeviceAddress(0x03, 0x04))
-            self.assertEqual(res.pct_pos, 500)
+            self.assertEqual(res.pos, 500)
 
     def test_decode_web_response_err1(self):
         """Bad cmd_char"""
