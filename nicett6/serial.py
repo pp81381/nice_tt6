@@ -13,15 +13,15 @@ _LOGGER = logging.getLogger(__name__)
 T = TypeVar("T")
 
 
-class MultiplexerReaderStopSentinel:
+class SerialReaderStopSentinel:
     pass
 
 
-class MultiplexerReader(AsyncIterator[T]):
+class SerialReader(AsyncIterator[T]):
     """Generic class for Readers"""
 
     def __init__(self) -> None:
-        self.queue: asyncio.Queue[T | MultiplexerReaderStopSentinel] = asyncio.Queue()
+        self.queue: asyncio.Queue[T | SerialReaderStopSentinel] = asyncio.Queue()
         self.is_stopped: bool = False
         self.is_iterated: bool = False
 
@@ -32,32 +32,32 @@ class MultiplexerReader(AsyncIterator[T]):
     def stop(self) -> None:
         if not self.is_stopped:
             self.is_stopped = True
-            self.queue.put_nowait(MultiplexerReaderStopSentinel())
+            self.queue.put_nowait(SerialReaderStopSentinel())
 
     def __aiter__(self) -> AsyncIterator[T]:
         return self
 
     async def __anext__(self) -> T:
         if self.is_iterated:
-            raise RuntimeError("MultiplexerReader cannot be iterated twice")
+            raise RuntimeError("Reader cannot be iterated twice")
         item = await self.queue.get()
-        if isinstance(item, MultiplexerReaderStopSentinel):
+        if isinstance(item, SerialReaderStopSentinel):
             self.is_iterated = True
             raise StopAsyncIteration
         return item
 
 
-class MultiplexerWriter(Generic[T]):
+class SerialWriter(Generic[T]):
     """Base class for Writers"""
 
-    def __init__(self, conn: "MultiplexerSerialConnection[T]") -> None:
+    def __init__(self, conn: "SerialConnection[T]") -> None:
         self.conn = conn
 
     async def write(self, msg: bytes) -> None:
         await self.conn.write(msg)
 
 
-class MultiplexerReaders(Generic[T]):
+class ReaderManager(Generic[T]):
     """
     Keeps track of all of the readers and interfaces them with the Protocol
 
@@ -67,12 +67,12 @@ class MultiplexerReaders(Generic[T]):
 
     def __init__(self, decoder: Callable[[bytes], T]) -> None:
         self.decoder = decoder
-        self.readers: WeakSet[MultiplexerReader[T]] = WeakSet()
+        self.readers: WeakSet[SerialReader[T]] = WeakSet()
 
-    def add_reader(self, reader: MultiplexerReader[T]) -> None:
+    def add_reader(self, reader: SerialReader[T]) -> None:
         self.readers.add(reader)
 
-    def remove_reader(self, reader: MultiplexerReader[T]) -> None:
+    def remove_reader(self, reader: SerialReader[T]) -> None:
         reader.stop()
         self.readers.remove(reader)
 
@@ -89,11 +89,11 @@ class MultiplexerReaders(Generic[T]):
         self.readers.clear()
 
 
-class MultiplexerProtocol(asyncio.Protocol, Generic[T]):
+class SerialProtocol(asyncio.Protocol, Generic[T]):
     def __init__(
         self,
         eol: bytes,
-        readers: MultiplexerReaders[T],
+        readers: ReaderManager[T],
         post_write_delay: float,
     ) -> None:
         self.readers = readers
@@ -143,7 +143,7 @@ class MultiplexerProtocol(asyncio.Protocol, Generic[T]):
             _LOGGER.debug("Transport already closed")
 
 
-class MultiplexerSerialConnection(Generic[T]):
+class SerialConnection(Generic[T]):
     """
     Manages a serial connection
 
@@ -159,10 +159,8 @@ class MultiplexerSerialConnection(Generic[T]):
         self,
         decoder: Callable[[bytes], T],
         eol: bytes,
-        reader_factory: Callable[[], MultiplexerReader[T]],
-        writer_factory: Callable[
-            ["MultiplexerSerialConnection[T]"], MultiplexerWriter[T]
-        ],
+        reader_factory: Callable[[], SerialReader[T]],
+        writer_factory: Callable[["SerialConnection[T]"], SerialWriter[T]],
         post_write_delay: float,
         **serial_kwargs,
     ) -> None:
@@ -172,8 +170,8 @@ class MultiplexerSerialConnection(Generic[T]):
         self.writer_factory = writer_factory
         self.post_write_delay = post_write_delay
         self.serial_kwargs = serial_kwargs
-        self._protocol: Optional[MultiplexerProtocol[T]] = None
-        self._readers: MultiplexerReaders[T] = MultiplexerReaders(decoder)
+        self._protocol: Optional[SerialProtocol[T]] = None
+        self._readers: ReaderManager[T] = ReaderManager(decoder)
 
     @property
     def is_connected(self) -> bool:
@@ -184,10 +182,10 @@ class MultiplexerSerialConnection(Generic[T]):
         loop = asyncio.get_running_loop()
         _, protocol = await create_serial_connection(
             loop,
-            lambda: MultiplexerProtocol(self.eol, self._readers, self.post_write_delay),
+            lambda: SerialProtocol(self.eol, self._readers, self.post_write_delay),
             **self.serial_kwargs,
         )
-        assert isinstance(protocol, MultiplexerProtocol)
+        assert isinstance(protocol, SerialProtocol)
         self._protocol = protocol
 
     def disconnect(self):
@@ -199,16 +197,16 @@ class MultiplexerSerialConnection(Generic[T]):
         self._readers.remove_all()
         self.disconnect()
 
-    def add_reader(self) -> MultiplexerReader[T]:
+    def add_reader(self) -> SerialReader[T]:
         reader = self.reader_factory()
         self._readers.add_reader(reader)
         return reader
 
-    def remove_reader(self, reader: MultiplexerReader[T]) -> None:
+    def remove_reader(self, reader: SerialReader[T]) -> None:
         self._readers.remove_reader(reader)
         reader.stop()
 
-    def get_writer(self) -> MultiplexerWriter[T]:
+    def get_writer(self) -> SerialWriter[T]:
         return self.writer_factory(self)
 
     async def write(self, msg: bytes) -> None:
@@ -228,7 +226,7 @@ class MultiplexerSerialConnection(Generic[T]):
         Note that there could be unrelated messages received if web commands are on
         or if another command has just been submitted
         """
-        reader: MultiplexerReader[T] = self.add_reader()
+        reader: SerialReader[T] = self.add_reader()
         await coro
         await asyncio.sleep(time_window)
         self.remove_reader(reader)

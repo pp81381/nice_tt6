@@ -6,21 +6,15 @@ from serial import PARITY_NONE, STOPBITS_ONE  # type: ignore
 
 from nicett6.decode import Decode, ResponseMessageType
 from nicett6.encode import Encode
-from nicett6.multiplexer import (
-    MultiplexerReader,
-    MultiplexerSerialConnection,
-    MultiplexerWriter,
-)
+from nicett6.serial import SerialConnection, SerialReader, SerialWriter
 from nicett6.ttbus_device import TTBusDeviceAddress
 from nicett6.utils import async_get_platform_serial_port
 
 _LOGGER = logging.getLogger(__name__)
 
-ResponseMessageConnectionType: TypeAlias = MultiplexerSerialConnection[
-    ResponseMessageType
-]
-ResponseMessageReaderType: TypeAlias = MultiplexerReader[ResponseMessageType]
-ResponseMessageWriterType: TypeAlias = MultiplexerWriter[ResponseMessageType]
+ResponseMessageConnectionType: TypeAlias = SerialConnection[ResponseMessageType]
+ResponseMessageReaderType: TypeAlias = SerialReader[ResponseMessageType]
+ResponseMessageWriterType: TypeAlias = SerialWriter[ResponseMessageType]
 
 
 class TT6Reader(ResponseMessageReaderType):

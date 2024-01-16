@@ -6,18 +6,18 @@ from unittest.mock import AsyncMock, patch
 from nicett6.command_code import CommandCode
 from nicett6.consts import RCV_EOL
 from nicett6.decode import AckResponse, ResponseMessageType
-from nicett6.multiplexer import MultiplexerProtocol
+from nicett6.serial import SerialProtocol
 from nicett6.tt6_connection import TT6Connection, TT6Writer, open_connection
 from nicett6.ttbus_device import TTBusDeviceAddress
 
 
 def mock_csc_return_value(
     *args, **kwargs
-) -> Tuple[asyncio.Transport, MultiplexerProtocol[bytes]]:
-    """returns mock transport and the MultiPlexerProtocol in args[1]"""
+) -> Tuple[asyncio.Transport, SerialProtocol[bytes]]:
+    """returns mock transport and the SerialProtocol in args[1]"""
     transport = AsyncMock(spec=asyncio.Transport)
     transport.is_closing.return_value = False
-    protocol: MultiplexerProtocol[bytes] = args[1]()
+    protocol: SerialProtocol[bytes] = args[1]()
     protocol.connection_made(transport)
     return transport, protocol
 
@@ -25,7 +25,7 @@ def mock_csc_return_value(
 class TestReaderAndWriter(IsolatedAsyncioTestCase):
     def setUp(self):
         patcher = patch(
-            "nicett6.multiplexer.create_serial_connection",
+            "nicett6.serial.create_serial_connection",
             side_effect=mock_csc_return_value,
         )
         self.addCleanup(patcher.stop)
@@ -34,7 +34,7 @@ class TestReaderAndWriter(IsolatedAsyncioTestCase):
     @staticmethod
     def get_protocol(
         conn: TT6Connection,
-    ) -> MultiplexerProtocol[ResponseMessageType]:
+    ) -> SerialProtocol[ResponseMessageType]:
         assert conn._protocol is not None
         return conn._protocol
 

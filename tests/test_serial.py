@@ -5,19 +5,14 @@ from unittest import IsolatedAsyncioTestCase
 from unittest.mock import AsyncMock, MagicMock, call, patch
 
 from nicett6.consts import RCV_EOL, SEND_EOL
-from nicett6.multiplexer import (
-    MultiplexerProtocol,
-    MultiplexerReader,
-    MultiplexerSerialConnection,
-    MultiplexerWriter,
-)
+from nicett6.serial import SerialConnection, SerialProtocol, SerialReader, SerialWriter
 
 
 class MessageAccumulator:
     def __init__(self) -> None:
         self.received: List[bytes] = []
 
-    async def accumulate(self, conn: MultiplexerSerialConnection[bytes]):
+    async def accumulate(self, conn: SerialConnection[bytes]):
         reader = conn.add_reader()
         async for msg in reader:
             self.received.append(msg)
@@ -25,11 +20,11 @@ class MessageAccumulator:
 
 def mock_csc_return_value(
     *args, **kwargs
-) -> Tuple[asyncio.Transport, MultiplexerProtocol[bytes]]:
-    """returns mock transport and the MultiPlexerProtocol in args[1]"""
+) -> Tuple[asyncio.Transport, SerialProtocol[bytes]]:
+    """returns mock transport and SerialProtocol in args[1]"""
     transport = AsyncMock(spec=asyncio.Transport)
     transport.is_closing.return_value = False
-    protocol: MultiplexerProtocol[bytes] = args[1]()
+    protocol: SerialProtocol[bytes] = args[1]()
     protocol.connection_made(transport)
     return transport, protocol
 
@@ -37,18 +32,18 @@ def mock_csc_return_value(
 class TestConnection(IsolatedAsyncioTestCase):
     def setUp(self):
         patcher = patch(
-            "nicett6.multiplexer.create_serial_connection",
+            "nicett6.serial.create_serial_connection",
             side_effect=mock_csc_return_value,
         )
         self.addCleanup(patcher.stop)
         self.mock_csc = patcher.start()
 
     async def test_conn(self):
-        conn = MultiplexerSerialConnection[bytes](
+        conn = SerialConnection[bytes](
             lambda x: x,
             RCV_EOL,
-            MultiplexerReader[bytes],
-            MultiplexerWriter,
+            SerialReader[bytes],
+            SerialWriter,
             0.05,
         )
         await conn.connect()
@@ -56,7 +51,7 @@ class TestConnection(IsolatedAsyncioTestCase):
         self.assertTrue(conn.is_connected)
         p = conn._protocol
         assert p is not None
-        self.assertIsInstance(p, MultiplexerProtocol)
+        self.assertIsInstance(p, SerialProtocol)
         t = p._transport
         assert t is not None
         self.assertIsInstance(t, asyncio.Transport)
@@ -83,16 +78,16 @@ class TestReaderAndWriter(IsolatedAsyncioTestCase):
 
     async def asyncSetUp(self) -> None:
         patcher = patch(
-            "nicett6.multiplexer.create_serial_connection",
+            "nicett6.serial.create_serial_connection",
             side_effect=mock_csc_return_value,
         )
         self.addCleanup(patcher.stop)
         self.mock_csc = patcher.start()
-        self.conn = MultiplexerSerialConnection[bytes](
+        self.conn = SerialConnection[bytes](
             lambda x: x,
             RCV_EOL,
-            MultiplexerReader[bytes],
-            MultiplexerWriter,
+            SerialReader[bytes],
+            SerialWriter,
             0.05,
         )
         await self.conn.connect()
@@ -101,7 +96,7 @@ class TestReaderAndWriter(IsolatedAsyncioTestCase):
         self.conn.close()
 
     @property
-    def protocol(self) -> MultiplexerProtocol[bytes]:
+    def protocol(self) -> SerialProtocol[bytes]:
         assert self.conn._protocol is not None
         return self.conn._protocol
 
@@ -205,12 +200,12 @@ class TestReaderAndWriter(IsolatedAsyncioTestCase):
     async def test_disconnected_writer(self):
         self.conn.disconnect()
         writer = self.conn.get_writer()
-        with self.assertLogs("nicett6.multiplexer", level=WARNING) as cm:
+        with self.assertLogs("nicett6.serial", level=WARNING) as cm:
             await writer.write(self.TEST_MESSAGE)
         self.assertEqual(
             cm.output,
             [
-                "WARNING:nicett6.multiplexer:Message not written (not connected): b'TEST MESSAGE\\r\\n'",
+                "WARNING:nicett6.serial:Message not written (not connected): b'TEST MESSAGE\\r\\n'",
             ],
         )
 
