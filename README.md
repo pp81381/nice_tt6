@@ -22,9 +22,9 @@ Known to work with a GANA USB to RS-232 DB9 cable on Windows 10 and on Raspbian 
 
 ## Opening a connection
 
-`open_connection([serial_port])`
+`nicett6.connection.open([serial_port])` opens a connection to the TT6 controlled connected to `serial_port`
 
-Opens a connection to the TT6 controlled connected to `serial_port`
+`nicett6.connection.open_connection([serial_port])` opens a connection and acts as an async context manager
 
 If `serial_port` is not supplied or is `None` then an intelligent guess will be made as to the right parameter depending on the platform
 
@@ -34,7 +34,7 @@ The serial_port parameter can be anything that can be passed to `serial.serial_f
 * `COM3` (Windows)
 * `socket://192.168.0.100:50000` (if you are using a TCP/IP to serial  converter)
 
-Returns an async context managed `MultiplexerSerialConnection`
+Returns a `TT6Connection`
 
 Example:
 
@@ -45,17 +45,29 @@ Example:
         await writer.send_hex_move_command(tt_addr, 0xE0)
 ```
 
-## MultiplexerSerialConnection
+## TT6Connection
 
 A class that allows multiple readers and writers to a single serial connection.
 
-Created by `open_connection([serial_port])`.   See [Opening a connection](#opening-a-connection).
+The lifecycle of the connection is managed by the client as opposed to closing upon receipt of an EOF from the device.
+If the connection is disconnected by either end then readers wait for the next message and writers will discard any messages sent.
+Once the connection is re-connected then normal service resumes.  The client can terminate the connection by calling `close()`.
+
+See [Opening a connection](#opening-a-connection) for information on opening a connection.
+
+Property|Description
+--|--
+`is_connected`|Indicates whether the connection is connected
 
 Method|Description
 --|--
-`MultiplexerSerialConnection.add_reader()`|Returns a new reader object.<br>If the connection was created by `open_connection` then this will be a `TT6Reader` object, derived from `MultiplexerReader`.<br>The serial connection retains a weak reference to the reader in order to keep it updated.  A reader that is no longer needed can either be dereferenced or explicitly removed.
-`MultiplexerSerialConnection.remove_reader(reader)`|Stops the `reader` object from receiving any further messages
-`MultiplexerSerialConnection.get_writer()`|Returns a new writer object.   If the connection was created by `open_connection` then this will be a `TT6Writer` object, derived from `MultiplexerWriter`.<br>The base class manages contention between multiple potential clients of the same connection.<br>Writer objects do not take any resources and can simply be dereferenced when finished with
+`connect()`|Establish or re-establish the connection.
+`disconnect()`|Break the connection but do not stop any readers or writers.
+`close()`|Stop and remove all readers (they will stop iterating).   Disconnect.
+`add_reader()`|Returns a new reader object.<br>If the connection was created by `open_connection` then this will be a `TT6Reader` object.<br>The serial connection retains a weak reference to the reader in order to keep it updated.  A reader that is no longer needed can either be dereferenced or explicitly removed.
+`remove_reader(reader)`|Stops the `reader` object from receiving any further messages
+`get_writer()`|Returns a new writer object.   If the connection was created by `open_connection` then this will be a `TT6Writer` object.<br>The base class manages contention between multiple potential clients of the same connection.<br>Writer objects do not take any resources and can simply be dereferenced when finished with
+`process_request(coro, [time_window])`|Send a command and collect the response messages that arrive in time_window
 
 ## TTBusDeviceAddress
 
@@ -81,7 +93,7 @@ tt_addr = TTBusDeviceAddress(0x02, 0x04)
 
 ## TT6Reader
 
-A reader that will collect all decoded messages received on the `MultiPlexerSerialConnection` in a queue until it is removed
+A reader that will collect all decoded messages received on the `TT6Connection` in a queue until it is removed
 
 A `TT6Reader` is an asynchronous iterator returning [response message objects](#Response-message-classes)
 
@@ -144,13 +156,12 @@ Property|Description
 
 Method|Description
 --|--
-`TT6Writer.send_web_on()`|Send the WEB_ON command to the controller to enable web commands and to instruct the controller to send the motor positions as they move
-`TT6Writer.send_web_off()`|Send the WEB_OFF command to the controller to disable web commands and to instruct the controller not to send the motor positions as they move
-`TT6Writer.send_simple_command(tt_addr, cmd_name)`|Send `cmd_name` to the TTBus device at `tt_addr`<br>See the table below for a list of all valid `cmd_name` values
-`TT6Writer.send_hex_move_command(tt_addr, hex_pos)`|Instruct the controller to move the TTBus device at `tt_addr` to `hex_pos`<br>`hex_pos` is a value between 0x00 (fully down) and 0xFF (fully up)
-`TT6Writer.send_web_move_command(tt_addr, pos)`|Instruct the controller to move the TTBus device at `tt_addr` to `pos`<br>`pos` is a value between 0 (fully down) and 1000 (fully up)<br>Out of range values for `pos` will be rounded up or down accordingly<br>Web commands must be enabled for this command to work
-`TT6Writer.send_web_pos_request(tt_addr)`|Send a request to the controller to send the position of the TTBus device at `tt_addr`<br>Web commands must be enabled for this command to work
-`TT6Writer.process_request(coro, [time_window])`|Send a command and collect the response messages that arrive in time_window
+`send_web_on()`|Send the WEB_ON command to the controller to enable web commands and to instruct the controller to send the motor positions as they move
+`send_web_off()`|Send the WEB_OFF command to the controller to disable web commands and to instruct the controller not to send the motor positions as they move
+`send_simple_command(tt_addr, cmd_name)`|Send `cmd_name` to the TTBus device at `tt_addr`<br>See the table below for a list of all valid `cmd_name` values
+`send_hex_move_command(tt_addr, hex_pos)`|Instruct the controller to move the TTBus device at `tt_addr` to `hex_pos`<br>`hex_pos` is a value between 0x00 (fully down) and 0xFF (fully up)
+`send_web_move_command(tt_addr, pos)`|Instruct the controller to move the TTBus device at `tt_addr` to `pos`<br>`pos` is a value between 0 (fully down) and 1000 (fully up)<br>Out of range values for `pos` will be rounded up or down accordingly<br>Web commands must be enabled for this command to work
+`send_web_pos_request(tt_addr)`|Send a request to the controller to send the position of the TTBus device at `tt_addr`<br>Web commands must be enabled for this command to work
 
 #### Command Codes
 
@@ -250,11 +261,11 @@ Property|Description
 
 Method|Description
 --|--
-`CoverManager.open()`|Open the connection<br>Called automatically if the object is used as a context manager
-`CoverManager.close()`|Close the connection<br>Called automatically if the object is used as a context manager
-`CoverManager.message_tracker()`|A coroutine that must be running in the background for the manager to be able to track cover positions
-`CoverManager.add_cover(tt_addr, cover)`|Add a cover to be managed<br>tt_addr is the TTBus address of the cover<br>The connection must be open so that the initial position can be requested
-`CoverManager.remove_covers()`|Remove all covers and clean up
+`open()`|Open the connection<br>Called automatically if the object is used as a context manager
+`close()`|Close the connection<br>Called automatically if the object is used as a context manager
+`message_tracker()`|A coroutine that must be running in the background for the manager to be able to track cover positions
+`add_cover(tt_addr, cover)`|Add a cover to be managed<br>tt_addr is the TTBus address of the cover<br>The connection must be open so that the initial position can be requested
+`remove_covers()`|Remove all covers and clean up
 
 ## Cover
 
@@ -281,20 +292,20 @@ Has the following properties and methods:
 
 Property|Description
 --|--
-`Cover.pos`|the cover position (0 = fully down, 1000 = fully up)
-`Cover.drop`|drop in metres (0.0 = fully up, max_drop = fully down)
-`Cover.is_moving`|returns True if the cover has moved recently
-`Cover.is_fully_up`|returns True if the cover is fully up
-`Cover.is_fully_down`|returns True if the cover is fully down
-`Cover.is_going_up`|returns True if the cover is going up<br>will only be meaningful after the position has been set by the first POS message coming back from the cover for a movement
-`Cover.is_going_down`|returns True if the cover is going down<br>will only be meaningful after the position has been set by the first POS message coming back from the cover for a movement
+`pos`|the cover position (0 = fully down, 1000 = fully up)
+`drop`|drop in metres (0.0 = fully up, max_drop = fully down)
+`is_moving`|returns True if the cover has moved recently
+`is_fully_up`|returns True if the cover is fully up
+`is_fully_down`|returns True if the cover is fully down
+`is_going_up`|returns True if the cover is going up<br>will only be meaningful after the position has been set by the first POS message coming back from the cover for a movement
+`is_going_down`|returns True if the cover is going down<br>will only be meaningful after the position has been set by the first POS message coming back from the cover for a movement
 
 
 Method|Description
 --|--
-`Cover.set_pos`|Set the position (0 = fully down, 1000 = fully up) - async<br>Will notify observers of the state change
-`Cover.moved()`|Called to indicate movement<br>When initiating movement, call `moved()` so that `is_moving` will be meaningful in the interval before the first POS message comes back from the cover<br>Will notify observers of the state change
-`Cover.set_idle()`|Called to indicate that the cover is idle<br>After detecting that the cover is idle, call `set_idle()` so that the next movement direction will be correctly inferred<br>Will notify observers of the state change
+`set_pos`|Set the position (0 = fully down, 1000 = fully up) - async<br>Will notify observers of the state change
+`moved()`|Called to indicate movement<br>When initiating movement, call `moved()` so that `is_moving` will be meaningful in the interval before the first POS message comes back from the cover<br>Will notify observers of the state change
+`set_idle()`|Called to indicate that the cover is idle<br>After detecting that the cover is idle, call `set_idle()` so that the next movement direction will be correctly inferred<br>Will notify observers of the state change
 
 Helper|Description
 --|--
@@ -309,16 +320,16 @@ Intended to be constructed by `CoverManager.add_cover()`
 
 Property|Description
 --|--
-`TT6Cover.tt_addr`|the TTBus address of the Cover
-`TT6Cover.cover`|the `Cover` helper
-`TT6Cover.writer`|the low level `TT6Writer`
+`tt_addr`|the TTBus address of the Cover
+`cover`|the `Cover` helper
+`writer`|the low level `TT6Writer`
 
 Method|Description
 --|--
-`TT6Cover.send_pos_request()`|Send a POS request to the controller
-`TT6Cover.send_pos_command(pos)`|Send a POS command to the controller to set the position of the Cover to `pos`<br>`pos` should be between 0 (fully down) and 1000 (fully up)<br>Out of range values for `pos` will be rounded up/down accordingly
-`TT6Cover.send_hex_move_command()`|Send a POS command to the controller to set the position of the Cover to `hex_pos`<br>`hex_pos` is a value between 0x00 (fully down) and 0xFF (fully up)
-`TT6Cover.send_simple_command(cmd_name)`|Send a [simple command](#command-codes) to the controller for the Cover
+`send_pos_request()`|Send a POS request to the controller
+`send_pos_command(pos)`|Send a POS command to the controller to set the position of the Cover to `pos`<br>`pos` should be between 0 (fully down) and 1000 (fully up)<br>Out of range values for `pos` will be rounded up/down accordingly
+`send_hex_move_command()`|Send a POS command to the controller to set the position of the Cover to `hex_pos`<br>`hex_pos` is a value between 0x00 (fully down) and 0xFF (fully up)
+`send_simple_command(cmd_name)`|Send a [simple command](#command-codes) to the controller for the Cover
 
 ## PostMovementNotifier
 
@@ -365,12 +376,12 @@ image_def = ImageDef(0.05, 2.0, 16 / 9)
 
 Property|Description
 --|--
-`ImageDef.width`|implied image width
+`width`|implied image width
 
 
 Method|Description
 --|--
-`ImageDef.implied_image_height(target_aspect_ratio)`|implied height for `target_aspect_ratio` if the width is held constant
+`implied_image_height(target_aspect_ratio)`|implied height for `target_aspect_ratio` if the width is held constant
 <br>
 
 ## CIWHelper
@@ -389,12 +400,12 @@ Properties:
 
 Property|Description
 --|--
-`CIWHelper.image_width`|the width of the visible image in metres
-`CIWHelper.image_height`|the height of the visible image in metres or `None` if the image is not visible
-`CIWHelper.image_diagonal`|the diagonal of the visible image in metres or `None` if the image is not visible
-`CIWHelper.image_area`|the area of the visible image in square metres or `None` if the image is not visible
-`CIWHelper.image_is_visible`|True if the image area is visible or `None` if the image is not visible
-`CIWHelper.aspect_ratio`|The aspect ratio of the visible image or `None` if the image is not visible
+`image_width`|the width of the visible image in metres
+`image_height`|the height of the visible image in metres or `None` if the image is not visible
+`image_diagonal`|the diagonal of the visible image in metres or `None` if the image is not visible
+`image_area`|the area of the visible image in square metres or `None` if the image is not visible
+`image_is_visible`|True if the image area is visible or `None` if the image is not visible
+`aspect_ratio`|The aspect ratio of the visible image or `None` if the image is not visible
 
 # Emulator
 
