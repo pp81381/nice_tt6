@@ -7,7 +7,7 @@ from nicett6.command_code import CommandCode
 from nicett6.connection import TT6Connection, TT6Writer, open_connection
 from nicett6.consts import RCV_EOL
 from nicett6.decode import AckResponse, ResponseMessageType
-from nicett6.multiplexer import MultiplexerProtocol, MultiplexerSerialConnection
+from nicett6.multiplexer import MultiplexerProtocol
 from nicett6.ttbus_device import TTBusDeviceAddress
 
 
@@ -35,8 +35,8 @@ class TestReaderAndWriter(IsolatedAsyncioTestCase):
     def get_protocol(
         conn: TT6Connection,
     ) -> MultiplexerProtocol[ResponseMessageType]:
-        assert conn._conn._protocol is not None
-        return conn._conn._protocol
+        assert conn._protocol is not None
+        return conn._protocol
 
     @classmethod
     def get_transport(cls, conn: TT6Connection) -> asyncio.Transport:

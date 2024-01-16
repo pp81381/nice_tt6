@@ -62,31 +62,14 @@ class TT6Writer(ResponseMessageWriterType):
         await self.write(Encode.web_pos_request(tt_addr))
 
 
-class TT6Connection:
-    def __init__(self, conn: ResponseMessageConnectionType):
-        self._conn = conn
-
-    def close(self):
-        self._conn.close()
-
-    def add_reader(self) -> TT6Reader:
-        reader = self._conn.add_reader()
-        assert isinstance(reader, TT6Reader)
-        return reader
-
-    def remove_reader(self, reader: TT6Reader) -> None:
-        return self._conn.remove_reader(reader)
-
-    def get_writer(self) -> TT6Writer:
-        writer = self._conn.get_writer()
-        assert isinstance(writer, TT6Writer)
-        return writer
+class TT6Connection(ResponseMessageConnectionType):
+    pass
 
 
 async def open(serial_port: Optional[str] = None) -> TT6Connection:
     if serial_port is None:
         serial_port = await async_get_platform_serial_port()
-    conn = ResponseMessageConnectionType(
+    conn = TT6Connection(
         Decode.decode_line_bytes,
         Decode.EOL,
         TT6Reader,
@@ -99,7 +82,7 @@ async def open(serial_port: Optional[str] = None) -> TT6Connection:
         stopbits=STOPBITS_ONE,
     )
     await conn.connect()
-    return TT6Connection(conn)
+    return conn
 
 
 @asynccontextmanager
