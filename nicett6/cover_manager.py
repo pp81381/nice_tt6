@@ -63,6 +63,10 @@ class CoverManager:
 
         await self._writer.send_web_on()
 
+    async def reconnect(self):
+        assert self._conn is not None
+        await self._conn.connect()
+
     async def close(self) -> None:
         await self.remove_covers()
         if self._conn is not None:
