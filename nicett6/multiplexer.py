@@ -180,8 +180,7 @@ class MultiplexerSerialConnection(Generic[T]):
         return self._protocol is not None
 
     async def connect(self) -> None:
-        if self._protocol is not None:
-            raise RuntimeError("Connection already connected")
+        self.disconnect()
         loop = asyncio.get_running_loop()
         _, protocol = await create_serial_connection(
             loop,
