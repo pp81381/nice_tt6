@@ -101,11 +101,13 @@ class SerialProtocol(asyncio.Protocol, Generic[T]):
         self._transport: Optional[asyncio.Transport] = None
         self.send_lock = asyncio.Lock()
         self.post_write_delay = post_write_delay
+        self.connection_made_event = asyncio.Event()
 
     def connection_made(self, transport: asyncio.BaseTransport) -> None:
         _LOGGER.info("Connection made")
         assert isinstance(transport, asyncio.Transport)
         self._transport = transport
+        self.connection_made_event.set()
 
     def data_received(self, chunk: bytes) -> None:
         messages: List[bytes] = self.buf.append_chunk(chunk)
@@ -180,12 +182,9 @@ class SerialConnection(Generic[T]):
     async def connect(self) -> None:
         self.disconnect()
         loop = asyncio.get_running_loop()
-        _, protocol = await create_serial_connection(
-            loop,
-            lambda: SerialProtocol(self.eol, self._readers, self.post_write_delay),
-            **self.serial_kwargs,
-        )
-        assert isinstance(protocol, SerialProtocol)
+        protocol = SerialProtocol(self.eol, self._readers, self.post_write_delay)
+        await create_serial_connection(loop, lambda: protocol, **self.serial_kwargs)
+        await protocol.connection_made_event.wait()
         self._protocol = protocol
 
     def disconnect(self):
