@@ -2,7 +2,6 @@ import logging
 from dataclasses import dataclass
 
 from nicett6.command_code import CommandCode
-from nicett6.connection import TT6Writer
 from nicett6.cover import Cover
 from nicett6.decode import (
     AckResponse,
@@ -11,6 +10,7 @@ from nicett6.decode import (
     PctPosResponse,
     ResponseMessageType,
 )
+from nicett6.tt6_connection import TT6Writer
 from nicett6.ttbus_device import TTBusDeviceAddress
 
 _LOGGER = logging.getLogger(__name__)

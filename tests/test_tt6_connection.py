@@ -4,10 +4,10 @@ from unittest import IsolatedAsyncioTestCase
 from unittest.mock import AsyncMock, patch
 
 from nicett6.command_code import CommandCode
-from nicett6.connection import TT6Connection, TT6Writer, open_connection
 from nicett6.consts import RCV_EOL
 from nicett6.decode import AckResponse, ResponseMessageType
 from nicett6.multiplexer import MultiplexerProtocol
+from nicett6.tt6_connection import TT6Connection, TT6Writer, open_connection
 from nicett6.ttbus_device import TTBusDeviceAddress
 
 
@@ -67,7 +67,7 @@ class TestReaderAndWriter(IsolatedAsyncioTestCase):
 
 class TestOpenConnection(IsolatedAsyncioTestCase):
     async def test1(self):
-        with patch("nicett6.connection.open", side_effect=ValueError("Test")):
+        with patch("nicett6.tt6_connection.open", side_effect=ValueError("Test")):
             with self.assertRaises(ValueError):
                 async with open_connection():
                     pass

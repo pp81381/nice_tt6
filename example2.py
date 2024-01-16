@@ -1,7 +1,7 @@
 import asyncio
 import logging
 
-from nicett6.connection import open_connection
+from nicett6.tt6_connection import open_connection
 from nicett6.ttbus_device import TTBusDeviceAddress
 from nicett6.utils import parse_example_args, run_coro_after_delay
 

@@ -22,9 +22,9 @@ Known to work with a GANA USB to RS-232 DB9 cable on Windows 10 and on Raspbian 
 
 ## Opening a connection
 
-`nicett6.connection.open([serial_port])` opens a connection to the TT6 controlled connected to `serial_port`
+`nicett6.tt6_connection.open([serial_port])` opens a connection to the TT6 controlled connected to `serial_port`
 
-`nicett6.connection.open_connection([serial_port])` opens a connection and acts as an async context manager
+`nicett6.tt6_connection.open_connection([serial_port])` opens a connection and acts as an async context manager
 
 If `serial_port` is not supplied or is `None` then an intelligent guess will be made as to the right parameter depending on the platform
 

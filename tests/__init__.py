@@ -2,7 +2,7 @@ from asyncio import Event
 from asyncio import sleep as asyncio_sleep
 from unittest.mock import AsyncMock, MagicMock
 
-from nicett6.connection import TT6Reader, TT6Writer
+from nicett6.tt6_connection import TT6Reader, TT6Writer
 
 
 def make_mock_conn(reader_return_value):

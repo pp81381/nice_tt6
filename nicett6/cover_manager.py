@@ -1,8 +1,6 @@
 import logging
 from typing import Dict, Optional
 
-from nicett6.connection import TT6Connection, TT6Reader, TT6Writer
-from nicett6.connection import open as open_tt6
 from nicett6.cover import Cover
 from nicett6.decode import (
     AckResponse,
@@ -11,6 +9,8 @@ from nicett6.decode import (
     PctPosResponse,
     ResponseMessageType,
 )
+from nicett6.tt6_connection import TT6Connection, TT6Reader, TT6Writer
+from nicett6.tt6_connection import open as open_tt6
 from nicett6.tt6_cover import TT6Cover
 from nicett6.ttbus_device import TTBusDeviceAddress
 
