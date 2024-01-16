@@ -1,4 +1,5 @@
 import asyncio
+from logging import WARNING
 from typing import List, Tuple
 from unittest import IsolatedAsyncioTestCase
 from unittest.mock import AsyncMock, MagicMock, call, patch
@@ -199,6 +200,18 @@ class TestReaderAndWriter(IsolatedAsyncioTestCase):
                 call("sleep", 0.05),
                 call("write", self.TEST_MESSAGE),
             ]
+        )
+
+    async def test_disconnected_writer(self):
+        self.conn.disconnect()
+        writer = self.conn.get_writer()
+        with self.assertLogs("nicett6.multiplexer", level=WARNING) as cm:
+            await writer.write(self.TEST_MESSAGE)
+        self.assertEqual(
+            cm.output,
+            [
+                "WARNING:nicett6.multiplexer:Message not written (not connected): b'TEST MESSAGE\\r\\n'",
+            ],
         )
 
     async def test_process_request(self):
