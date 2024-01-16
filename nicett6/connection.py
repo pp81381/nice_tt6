@@ -1,50 +1,36 @@
 import logging
 from contextlib import asynccontextmanager
-from typing import Optional
+from typing import Optional, TypeAlias
 
 from serial import PARITY_NONE, STOPBITS_ONE  # type: ignore
 
 from nicett6.decode import Decode, ResponseMessageType
 from nicett6.encode import Encode
-from nicett6.multiplexer import MultiplexerReader
-from nicett6.multiplexer import MultiplexerSerialConnection as TT6Connection
-from nicett6.multiplexer import MultiplexerWriter
+from nicett6.multiplexer import (
+    MultiplexerReader,
+    MultiplexerSerialConnection,
+    MultiplexerWriter,
+)
 from nicett6.ttbus_device import TTBusDeviceAddress
 from nicett6.utils import async_get_platform_serial_port
 
 _LOGGER = logging.getLogger(__name__)
 
-
-@asynccontextmanager
-async def open_connection(serial_port=None):
-    conn = await open(serial_port)
-    try:
-        yield conn
-    finally:
-        conn.close()
+ResponseMessageConnectionType: TypeAlias = MultiplexerSerialConnection[
+    ResponseMessageType
+]
+ResponseMessageReaderType: TypeAlias = MultiplexerReader[ResponseMessageType]
+ResponseMessageWriterType: TypeAlias = MultiplexerWriter[ResponseMessageType]
 
 
-async def open(serial_port: Optional[str] = None) -> TT6Connection:
-    if serial_port is None:
-        serial_port = await async_get_platform_serial_port()
-    conn = TT6Connection(TT6Reader, TT6Writer, 0.05)
-    await conn.open(
-        Decode.EOL,
-        url=serial_port,
-        baudrate=19200,
-        timeout=None,
-        parity=PARITY_NONE,
-        stopbits=STOPBITS_ONE,
-    )
-    return conn
+class TT6Reader(ResponseMessageReaderType):
+    pass
 
 
-class TT6Reader(MultiplexerReader[ResponseMessageType]):
-    def __init__(self) -> None:
-        super().__init__(Decode.decode_line_bytes)
+class TT6Writer(ResponseMessageWriterType):
+    def __init__(self, conn: ResponseMessageConnectionType) -> None:
+        super().__init__(conn)
 
-
-class TT6Writer(MultiplexerWriter):
     async def send_web_on(self) -> None:
         _LOGGER.debug(f"send_web_on")
         await self.write(Encode.web_on())
@@ -74,3 +60,52 @@ class TT6Writer(MultiplexerWriter):
     async def send_web_pos_request(self, tt_addr: TTBusDeviceAddress) -> None:
         _LOGGER.debug(f"send_web_pos_request to {tt_addr}")
         await self.write(Encode.web_pos_request(tt_addr))
+
+
+class TT6Connection:
+    def __init__(self, conn: ResponseMessageConnectionType):
+        self._conn = conn
+
+    def close(self):
+        self._conn.close()
+
+    def add_reader(self) -> TT6Reader:
+        reader = self._conn.add_reader()
+        assert isinstance(reader, TT6Reader)
+        return reader
+
+    def remove_reader(self, reader: TT6Reader) -> None:
+        return self._conn.remove_reader(reader)
+
+    def get_writer(self) -> TT6Writer:
+        writer = self._conn.get_writer()
+        assert isinstance(writer, TT6Writer)
+        return writer
+
+
+async def open(serial_port: Optional[str] = None) -> TT6Connection:
+    if serial_port is None:
+        serial_port = await async_get_platform_serial_port()
+    conn = ResponseMessageConnectionType(
+        Decode.decode_line_bytes,
+        Decode.EOL,
+        TT6Reader,
+        TT6Writer,
+        0.05,
+        url=serial_port,
+        baudrate=19200,
+        timeout=None,
+        parity=PARITY_NONE,
+        stopbits=STOPBITS_ONE,
+    )
+    await conn.connect()
+    return TT6Connection(conn)
+
+
+@asynccontextmanager
+async def open_connection(serial_port=None):
+    conn = await open(serial_port)
+    try:
+        yield conn
+    finally:
+        conn.close()

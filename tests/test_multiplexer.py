@@ -1,6 +1,7 @@
 import asyncio
+from typing import List, Tuple
 from unittest import IsolatedAsyncioTestCase
-from unittest.mock import MagicMock, call, patch
+from unittest.mock import AsyncMock, MagicMock, call, patch
 
 from nicett6.consts import RCV_EOL, SEND_EOL
 from nicett6.multiplexer import (
@@ -11,9 +12,25 @@ from nicett6.multiplexer import (
 )
 
 
-def mock_csc_return_value(*args):
+class MessageAccumulator:
+    def __init__(self) -> None:
+        self.received: List[bytes] = []
+
+    async def accumulate(self, conn: MultiplexerSerialConnection[bytes]):
+        reader = conn.add_reader()
+        async for msg in reader:
+            self.received.append(msg)
+
+
+def mock_csc_return_value(
+    *args, **kwargs
+) -> Tuple[asyncio.Transport, MultiplexerProtocol[bytes]]:
     """returns mock transport and the MultiPlexerProtocol in args[1]"""
-    return MagicMock(), args[1]()
+    transport = AsyncMock(spec=asyncio.Transport)
+    transport.is_closing.return_value = False
+    protocol: MultiplexerProtocol[bytes] = args[1]()
+    protocol.connection_made(transport)
+    return transport, protocol
 
 
 class TestConnection(IsolatedAsyncioTestCase):
@@ -26,79 +43,121 @@ class TestConnection(IsolatedAsyncioTestCase):
         self.mock_csc = patcher.start()
 
     async def test_conn(self):
-        reader_factory = lambda: MultiplexerReader[bytes](lambda x: x)
-        conn = MultiplexerSerialConnection(reader_factory, MultiplexerWriter, 0.05)
-        await conn.open(RCV_EOL)
+        conn = MultiplexerSerialConnection[bytes](
+            lambda x: x,
+            RCV_EOL,
+            MultiplexerReader[bytes],
+            MultiplexerWriter,
+            0.05,
+        )
+        await conn.connect()
         self.mock_csc.assert_called_once()
-        self.assertTrue(conn.is_open)
-        t = conn.transport
-        p = conn.protocol
-        self.assertIsInstance(t, MagicMock)
+        self.assertTrue(conn.is_connected)
+        p = conn._protocol
+        assert p is not None
         self.assertIsInstance(p, MultiplexerProtocol)
+        t = p._transport
+        assert t is not None
+        self.assertIsInstance(t, asyncio.Transport)
         self.assertEqual(p.buf.eol, RCV_EOL)
         conn.close()
-        self.assertFalse(conn.is_open)
+        self.assertFalse(conn.is_connected)
         t.close.assert_called_once_with()
 
 
 class TestReaderAndWriter(IsolatedAsyncioTestCase):
-    DATA_RECEIVED = b"TEST MESSAGE 1" + RCV_EOL + b"TEST MESSAGE 2" + RCV_EOL
-    EXPECTED_MESSAGES = [
+    DATA_RECEIVED12 = b"TEST MESSAGE 1" + RCV_EOL + b"TEST MESSAGE 2" + RCV_EOL
+    DATA_RECEIVED56 = b"TEST MESSAGE 5" + RCV_EOL + b"TEST MESSAGE 6" + RCV_EOL
+    EXPECTED_MESSAGES12 = [
         b"TEST MESSAGE 1" + RCV_EOL,
         b"TEST MESSAGE 2" + RCV_EOL,
     ]
+    EXPECTED_MESSAGES1256 = [
+        b"TEST MESSAGE 1" + RCV_EOL,
+        b"TEST MESSAGE 2" + RCV_EOL,
+        b"TEST MESSAGE 5" + RCV_EOL,
+        b"TEST MESSAGE 6" + RCV_EOL,
+    ]
     TEST_MESSAGE = b"TEST MESSAGE" + SEND_EOL
 
-    def setUp(self):
+    async def asyncSetUp(self) -> None:
         patcher = patch(
             "nicett6.multiplexer.create_serial_connection",
             side_effect=mock_csc_return_value,
         )
         self.addCleanup(patcher.stop)
         self.mock_csc = patcher.start()
-        reader_factory = lambda: MultiplexerReader[bytes](lambda x: x)
-        self.conn = MultiplexerSerialConnection(reader_factory, MultiplexerWriter, 0.05)
-
-    async def asyncSetUp(self) -> None:
-        return await self.conn.open(RCV_EOL)
+        self.conn = MultiplexerSerialConnection[bytes](
+            lambda x: x,
+            RCV_EOL,
+            MultiplexerReader[bytes],
+            MultiplexerWriter,
+            0.05,
+        )
+        await self.conn.connect()
 
     def tearDown(self) -> None:
         self.conn.close()
 
+    @property
+    def protocol(self) -> MultiplexerProtocol[bytes]:
+        assert self.conn._protocol is not None
+        return self.conn._protocol
+
+    @property
+    def transport(self) -> asyncio.Transport:
+        transport = self.protocol._transport
+        assert transport is not None
+        return transport
+
     async def test_no_readers(self):
         reader = self.conn.add_reader()
-        self.conn.protocol.data_received(self.DATA_RECEIVED)
-        self.conn.protocol.connection_lost(None)
+        self.protocol.data_received(self.DATA_RECEIVED12)
+        # The messages are just eaten
+        self.assertEqual(len(self.protocol.buf.buf), 0)
 
     async def test_one_reader(self):
         reader = self.conn.add_reader()
-        self.conn.protocol.data_received(self.DATA_RECEIVED)
-        self.conn.protocol.connection_lost(None)
+        self.protocol.data_received(self.DATA_RECEIVED12)
+        self.conn.close()
         messages = [msg async for msg in reader]
-        self.assertEqual(messages, self.EXPECTED_MESSAGES)
+        self.assertEqual(messages, self.EXPECTED_MESSAGES12)
 
     async def test_one_reader_twice(self):
         reader = self.conn.add_reader()
-        self.conn.protocol.data_received(self.DATA_RECEIVED)
-        self.conn.protocol.connection_lost(None)
+        self.protocol.data_received(self.DATA_RECEIVED12)
+        self.conn.close()
         messages = [msg async for msg in reader]
-        self.assertEqual(messages, self.EXPECTED_MESSAGES)
+        self.assertEqual(messages, self.EXPECTED_MESSAGES12)
         with self.assertRaises(RuntimeError):
             messages = [msg async for msg in reader]
 
     async def test_two_readers(self):
         readers = [self.conn.add_reader(), self.conn.add_reader()]
-        self.conn.protocol.data_received(self.DATA_RECEIVED)
-        self.conn.protocol.connection_lost(None)
+        self.protocol.data_received(self.DATA_RECEIVED12)
+        self.conn.close()
         messages0 = [msg async for msg in readers[0]]
-        self.assertEqual(messages0, self.EXPECTED_MESSAGES)
+        self.assertEqual(messages0, self.EXPECTED_MESSAGES12)
         messages1 = [msg async for msg in readers[1]]
-        self.assertEqual(messages1, self.EXPECTED_MESSAGES)
+        self.assertEqual(messages1, self.EXPECTED_MESSAGES12)
+
+    async def test_reconnect(self):
+        msgs = MessageAccumulator()
+        task = asyncio.create_task(msgs.accumulate(self.conn))
+        await asyncio.sleep(0)  # Allow the reader to be added
+        self.protocol.data_received(self.DATA_RECEIVED12)
+        self.conn.disconnect()
+        self.assertIsNone(self.conn._protocol)
+        await self.conn.connect()
+        self.protocol.data_received(self.DATA_RECEIVED56)
+        self.conn.close()
+        await task
+        self.assertEqual(msgs.received, self.EXPECTED_MESSAGES1256)
 
     async def test_writer(self):
         writer = self.conn.get_writer()
         await writer.write(self.TEST_MESSAGE)
-        self.conn.transport.write.assert_called_once_with(self.TEST_MESSAGE)
+        self.transport.write.assert_called_once_with(self.TEST_MESSAGE)
 
     async def test_multiple_writes(self):
         log = MagicMock()
@@ -114,7 +173,7 @@ class TestReaderAndWriter(IsolatedAsyncioTestCase):
         def write_side_effect(msg):
             log("write", msg)
 
-        self.conn.transport.write.side_effect = write_side_effect
+        self.transport.write.side_effect = write_side_effect
 
         writer = self.conn.get_writer()
         with patch("asyncio.sleep", side_effect=sleep_side_effect):
@@ -149,11 +208,11 @@ class TestReaderAndWriter(IsolatedAsyncioTestCase):
         data3 = b"MORE STUFF" + RCV_EOL
         writer = self.conn.get_writer()
         coro = writer.write(dummy_request)
-        task = asyncio.create_task(writer.process_request(coro))
+        task = asyncio.create_task(self.conn.process_request(coro))
         await asyncio.sleep(0)  # Let the task create the reader
-        self.conn.protocol.data_received(data1 + data2)
+        self.protocol.data_received(data1 + data2)
         await asyncio.sleep(0.1)
-        self.conn.protocol.data_received(data3)
+        self.protocol.data_received(data3)
         messages = await task
-        self.conn.transport.write.assert_called_once_with(dummy_request)
+        self.transport.write.assert_called_once_with(dummy_request)
         self.assertEqual(messages, [data1, data2, data3])

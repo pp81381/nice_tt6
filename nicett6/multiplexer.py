@@ -1,7 +1,7 @@
 import asyncio
 import logging
 from collections.abc import AsyncIterator
-from typing import Awaitable, Callable, List, Optional, TypeVar
+from typing import Awaitable, Callable, Generic, List, Optional, TypeVar
 from weakref import WeakSet
 
 from serial_asyncio_fast import create_serial_connection  # type: ignore[import-untyped]
@@ -20,23 +20,14 @@ class MultiplexerReaderStopSentinel:
 class MultiplexerReader(AsyncIterator[T]):
     """Generic class for Readers"""
 
-    def __init__(self, decoder: Callable[[bytes], T]) -> None:
+    def __init__(self) -> None:
         self.queue: asyncio.Queue[T | MultiplexerReaderStopSentinel] = asyncio.Queue()
         self.is_stopped: bool = False
         self.is_iterated: bool = False
-        self.decoder = decoder
 
-    def message_received(self, msg: bytes) -> None:
+    def message_received(self, msg: T) -> None:
         if not self.is_stopped:
-            decoded_msg = self.decode(msg)
-            self.queue.put_nowait(decoded_msg)
-
-    def decode(self, data: bytes) -> T:
-        return self.decoder(data)
-
-    def connection_lost(self, exc: Exception | None):
-        if not self.is_stopped:
-            self.stop()
+            self.queue.put_nowait(msg)
 
     def stop(self) -> None:
         if not self.is_stopped:
@@ -56,19 +47,176 @@ class MultiplexerReader(AsyncIterator[T]):
         return item
 
 
-class MultiplexerWriter:
+class MultiplexerWriter(Generic[T]):
     """Base class for Writers"""
 
-    def __init__(self, conn: "MultiplexerSerialConnection") -> None:
+    def __init__(self, conn: "MultiplexerSerialConnection[T]") -> None:
         self.conn = conn
-        self.send_lock = asyncio.Lock()
 
     async def write(self, msg: bytes) -> None:
-        assert self.conn.is_open
+        await self.conn.write(msg)
+
+
+class MultiplexerReaders(Generic[T]):
+    """
+    Keeps track of all of the readers and interfaces them with the Protocol
+
+    Decouples readers from the protocol to simplify reconnection
+    Readers survive a disconnection - they are stopped when the session ends
+    """
+
+    def __init__(self, decoder: Callable[[bytes], T]) -> None:
+        self.decoder = decoder
+        self.readers: WeakSet[MultiplexerReader[T]] = WeakSet()
+
+    def add_reader(self, reader: MultiplexerReader[T]) -> None:
+        self.readers.add(reader)
+
+    def remove_reader(self, reader: MultiplexerReader[T]) -> None:
+        reader.stop()
+        self.readers.remove(reader)
+
+    def message_received(self, msg: bytes) -> None:
+        _LOGGER.debug(f"data_received: %r", msg)
+        decoded_message = self.decoder(msg)
+        _LOGGER.debug(f"decoded message: %r", decoded_message)
+        for r in self.readers:
+            r.message_received(decoded_message)
+
+    def remove_all(self) -> None:
+        for r in self.readers:
+            r.stop()
+        self.readers.clear()
+
+
+class MultiplexerProtocol(asyncio.Protocol, Generic[T]):
+    def __init__(
+        self,
+        eol: bytes,
+        readers: MultiplexerReaders[T],
+        post_write_delay: float,
+    ) -> None:
+        self.readers = readers
+        self.buf: MessageBuffer = MessageBuffer(eol)
+        self._transport: Optional[asyncio.Transport] = None
+        self.send_lock = asyncio.Lock()
+        self.post_write_delay = post_write_delay
+
+    def connection_made(self, transport: asyncio.BaseTransport) -> None:
+        _LOGGER.info("Connection made")
+        assert isinstance(transport, asyncio.Transport)
+        self._transport = transport
+
+    def data_received(self, chunk: bytes) -> None:
+        messages: List[bytes] = self.buf.append_chunk(chunk)
+        for msg in messages:
+            self.readers.message_received(msg)
+
+    def connection_lost(self, exc: Exception | None) -> None:
+        if self.buf.buf != b"":
+            _LOGGER.warn(
+                "Connection lost with partial message in buffer: %r", self.buf.buf
+            )
+        else:
+            _LOGGER.info("Connection lost")
+        self._transport = None
+
+    @property
+    def is_open(self):
+        return self._transport is not None and not self._transport.is_closing()
+
+    async def write(self, msg: bytes) -> bool:
+        if self._transport is None or self._transport.is_closing():
+            return False
         async with self.send_lock:
             _LOGGER.debug(f"Writing message {msg!r}")
-            self.conn.transport.write(msg)
-            await asyncio.sleep(self.conn.post_write_delay)
+            self._transport.write(msg)
+            await asyncio.sleep(self.post_write_delay)
+        return True
+
+    def close_transport(self) -> None:
+        if self._transport is not None:
+            _LOGGER.debug("Closing transport")
+            self._transport.close()
+            self._transport = None
+        else:
+            _LOGGER.debug("Transport already closed")
+
+
+class MultiplexerSerialConnection(Generic[T]):
+    """
+    Manages a serial connection
+
+    The lifecycle of the connection is managed by the client
+    as opposed to closing upon receipt of an EOF from the device
+    If the connection is disconnected then readers wait for the
+    next message and writers will discard any messages sent
+    Once the connection is re-connected then normal service resumes
+    The client can terminate the connection by calling close
+    """
+
+    def __init__(
+        self,
+        decoder: Callable[[bytes], T],
+        eol: bytes,
+        reader_factory: Callable[[], MultiplexerReader[T]],
+        writer_factory: Callable[
+            ["MultiplexerSerialConnection[T]"], MultiplexerWriter[T]
+        ],
+        post_write_delay: float,
+        **serial_kwargs,
+    ) -> None:
+        self.decoder = decoder
+        self.eol = eol
+        self.reader_factory = reader_factory
+        self.writer_factory = writer_factory
+        self.post_write_delay = post_write_delay
+        self.serial_kwargs = serial_kwargs
+        self._protocol: Optional[MultiplexerProtocol[T]] = None
+        self._readers: MultiplexerReaders[T] = MultiplexerReaders(decoder)
+
+    @property
+    def is_connected(self) -> bool:
+        return self._protocol is not None
+
+    async def connect(self) -> None:
+        if self._protocol is not None:
+            raise RuntimeError("Connection already connected")
+        loop = asyncio.get_running_loop()
+        _, protocol = await create_serial_connection(
+            loop,
+            lambda: MultiplexerProtocol(self.eol, self._readers, self.post_write_delay),
+            **self.serial_kwargs,
+        )
+        assert isinstance(protocol, MultiplexerProtocol)
+        self._protocol = protocol
+
+    def disconnect(self):
+        if self._protocol is not None:
+            self._protocol.close_transport()
+            self._protocol = None
+
+    def close(self) -> None:
+        self._readers.remove_all()
+        self.disconnect()
+
+    def add_reader(self) -> MultiplexerReader[T]:
+        reader = self.reader_factory()
+        self._readers.add_reader(reader)
+        return reader
+
+    def remove_reader(self, reader: MultiplexerReader[T]) -> None:
+        self._readers.remove_reader(reader)
+        reader.stop()
+
+    def get_writer(self) -> MultiplexerWriter[T]:
+        return self.writer_factory(self)
+
+    async def write(self, msg: bytes) -> None:
+        if self._protocol is not None and self._protocol.is_open:
+            await self._protocol.write(msg)
+        else:
+            _LOGGER.warning(f"Message not written (not connected): {msg!r}")
 
     async def process_request(self, coro: Awaitable[None], time_window: float = 1.0):
         """
@@ -81,97 +229,8 @@ class MultiplexerWriter:
         Note that there could be unrelated messages received if web commands are on
         or if another command has just been submitted
         """
-        reader: MultiplexerReader = self.conn.add_reader()
+        reader: MultiplexerReader[T] = self.add_reader()
         await coro
         await asyncio.sleep(time_window)
-        self.conn.remove_reader(reader)
+        self.remove_reader(reader)
         return [msg async for msg in reader]
-
-
-class MultiplexerProtocol(asyncio.Protocol):
-    def __init__(self, eol: bytes) -> None:
-        self.readers: WeakSet[MultiplexerReader] = WeakSet()
-        self.buf: MessageBuffer = MessageBuffer(eol)
-
-    def connection_made(self, transport: asyncio.BaseTransport) -> None:
-        _LOGGER.info("Connection made")
-
-    def data_received(self, chunk: bytes) -> None:
-        messages: List[bytes] = self.buf.append_chunk(chunk)
-        for msg in messages:
-            _LOGGER.debug(f"data_received: %r", msg)
-            for r in self.readers:
-                r.message_received(msg)
-
-    def connection_lost(self, exc: Exception | None) -> None:
-        if self.buf.buf != b"":
-            _LOGGER.warn(
-                "Connection lost with partial message in buffer: %r", self.buf.buf
-            )
-        else:
-            _LOGGER.info("Connection lost")
-        for r in self.readers:
-            r.connection_lost(exc)
-
-
-class MultiplexerSerialConnection:
-    def __init__(
-        self,
-        reader_factory: Callable[[], MultiplexerReader],
-        writer_factory: Callable[["MultiplexerSerialConnection"], MultiplexerWriter],
-        post_write_delay: float = 0,
-    ) -> None:
-        self.reader_factory = reader_factory
-        self.writer_factory = writer_factory
-        self.post_write_delay = post_write_delay
-        self._transport: Optional[asyncio.Transport] = None
-        self._protocol: Optional[MultiplexerProtocol] = None
-
-    @property
-    def is_open(self) -> bool:
-        return self._transport is not None and self._protocol is not None
-
-    @property
-    def transport(self) -> asyncio.Transport:
-        if self._transport is None:
-            raise RuntimeError("connection is not open")
-        return self._transport
-
-    @property
-    def protocol(self) -> MultiplexerProtocol:
-        if self._protocol is None:
-            raise RuntimeError("connection is not open")
-        return self._protocol
-
-    async def open(self, eol, **kwargs) -> None:
-        assert not self.is_open
-        loop = asyncio.get_running_loop()
-        self._transport, protocol = await create_serial_connection(
-            loop,
-            lambda: MultiplexerProtocol(eol),
-            **kwargs,
-        )
-        assert isinstance(protocol, MultiplexerProtocol)
-        self._protocol = protocol
-
-    def add_reader(self) -> MultiplexerReader:
-        if self._protocol is None:
-            raise RuntimeError("connection is not open")
-        reader = self.reader_factory()
-        self._protocol.readers.add(reader)
-        return reader
-
-    def remove_reader(self, reader: MultiplexerReader) -> None:
-        if self._protocol is None:
-            raise RuntimeError("connection is not open")
-        self._protocol.readers.remove(reader)
-        reader.stop()
-
-    def get_writer(self) -> MultiplexerWriter:
-        return self.writer_factory(self)
-
-    def close(self) -> None:
-        if self._transport is not None:
-            self._transport.close()
-            self._transport = None
-            self._protocol = None
